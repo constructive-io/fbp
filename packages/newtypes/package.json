@@ -1,0 +1,32 @@
+{
+  "name": "types",
+  "version": "0.0.1",
+  "author": "Dan Lynch <pyramation@gmail.com>",
+  "description": "types",
+  "homepage": "https://github.com/pyramation/fbp",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pyramation/fbp"
+  },
+  "bugs": {
+    "url": "https://github.com/pyramation/fbp/issues"
+  },
+  "scripts": {
+    "clean": "makage clean",
+    "prepack": "npm run build",
+    "build": "makage build",
+    "build:dev": "makage build --dev",
+    "lint": "eslint . --fix",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [],
+  "devDependencies": {
+    "makage": "0.1.9"
+  }
+}

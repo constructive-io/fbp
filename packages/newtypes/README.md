@@ -1,27 +1,40 @@
-# fbp
+# types
 
 <p align="center" width="100%">
   <img height="250" src="https://raw.githubusercontent.com/constructive-io/constructive/refs/heads/main/assets/outline-logo.svg" />
 </p>
 
-Flow-Based Programming TypeScript utilities for the Interweb
-
 <p align="center" width="100%">
   <a href="https://github.com/pyramation/fbp/actions/workflows/ci.yml">
     <img height="20" src="https://github.com/pyramation/fbp/actions/workflows/ci.yml/badge.svg" />
   </a>
+   <a href="https://www.npmjs.com/package/types"><img height="20" src="https://img.shields.io/github/package-json/v/pyramation/fbp?filename=packages%2Ftypes%2Fpackage.json"/></a>
 </p>
 
-## Packages
+## Developing
 
-This repository contains the following packages:
+This is a pnpm module within a pnpm workspace.
 
-- [`@fbp/types`](https://github.com/interweb-inc/data-flow/tree/main/packages/types)  
-  Flow-Based Programming TypeScript Types & Definitions
+```sh
+# Install dependencies
+pnpm install
+
+# Run tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Build the module
+pnpm build
+
+# Lint the code
+pnpm lint
+```
 
 ## Credits
 
-**🛠 Built by the [Constructive](https://constructive.io) team — creators of modular Postgres tooling for secure, composable backends. If you like our work, contribute on [GitHub](https://github.com/constructive-io).**
+**Built by the [Constructive](https://constructive.io) team. If you like our work, contribute on [GitHub](https://github.com/constructive-io).**
 
 ## Disclaimer
 
