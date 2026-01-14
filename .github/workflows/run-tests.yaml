@@ -25,6 +25,6 @@ jobs:
           yarn
           yarn build
 
-      - name: Test Schema for Litegraph
+      - name: Build packages
         run: |
-          cd ./packages/litegraph && yarn test
+          pnpm run build

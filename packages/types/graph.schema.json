@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GraphSchemata",
-  "description": "Nested graphs where every Node has a public signature (inputs/outputs/props). Subnets are Nodes that contain child nodes/edges. GraphInput/GraphOutput/GraphProp are special UI boundary adapters generated deterministically from a subnet’s declared inputs/outputs/props. Edges are in-scope only and connect named ports (no indexes/lanes). Channels default to 'main' when omitted.",
-  "$ref": "#/definitions/Node",
+  "description": "Nested graphs where NodeDefinitions define reusable node types (context/category/type/ports) and Nodes are instances referencing those definitions. Subnets are Nodes that contain child nodes/edges and define their own interface. GraphInput/GraphOutput/GraphProp are special UI boundary adapters generated deterministically from a subnet's declared inputs/outputs/props. Edges are in-scope only and connect named ports (no indexes/lanes). Channels default to 'main' when omitted.",
+  "$ref": "#/definitions/Graph",
   "definitions": {
     "Metadata": {
       "type": "object",
@@ -39,7 +39,7 @@
 
     "Prop": {
       "type": "object",
-      "description": "A configuration parameter (not a dataflow port). Values may be literals or Ref objects.",
+      "description": "A configuration parameter value on a node instance. Values may be literals or Ref objects.",
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "type": { "type": "string", "minLength": 1 },
@@ -51,6 +51,22 @@
           ]
         },
         "description": { "type": "string" }
+      },
+      "required": ["name", "type"],
+      "additionalProperties": false
+    },
+
+    "PropDefinition": {
+      "type": "object",
+      "description": "A property schema in a NodeDefinition. Defines the shape and defaults for configuration parameters.",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "default": {
+          "description": "Default value for this property."
+        },
+        "description": { "type": "string" },
+        "required": { "type": "boolean", "default": false }
       },
       "required": ["name", "type"],
       "additionalProperties": false
@@ -101,89 +117,149 @@
 
     "NodeKind": {
       "type": "string",
-      "description": "Optional hint for tooling/UI. Execution semantics are defined by (context, type). GraphInput/GraphOutput are special boundary adapters for subnets.",
+      "description": "Optional hint for tooling/UI. Execution semantics are defined by type. GraphInput/GraphOutput are special boundary adapters for subnets.",
       "enum": ["node", "subnet", "graphInput", "graphOutput", "graphProp"]
     },
 
-    "Node": {
+    "NodeDefinition": {
       "type": "object",
-      "description": "Everything is a Node. A Node with child nodes/edges is a subnet (a folder/graph). The root document is the root Node.",
+      "description": "Defines a reusable node type with its context, category, type identifier, and port/prop schema. Instances (Node) reference definitions by type.",
       "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Node name. By convention may be a path (e.g. 'some/subnet1/node2'). Identity is name-within-parent-scope; rename/move is identity change."
-        },
-
-        "kind": {
-          "$ref": "#/definitions/NodeKind",
-          "description": "Optional. If omitted, tooling may infer 'subnet' when nodes/edges exist; otherwise 'node'."
-        },
-
         "context": {
           "type": "string",
           "minLength": 1,
-          "description": "Registry context namespace (e.g. 'kubernetes', 'animation', 'math')."
+          "description": "Registry context namespace (e.g. 'js', 'python', 'kubernetes', 'animation')."
         },
-
         "category": {
           "type": "string",
           "minLength": 1,
-          "description": "Palette/sharding category within a context (e.g. 'deployment', 'geometry', 'noise')."
+          "description": "Palette/sharding category within a context (e.g. 'math', 'io', 'const')."
         },
-
         "type": {
           "type": "string",
           "minLength": 1,
-          "description": "Node type key within the given context."
+          "description": "Unique type identifier, typically in format 'context/category/name' (e.g. 'js/math/add')."
         },
-
-        "meta": { "$ref": "#/definitions/Metadata" },
-
         "inputs": {
           "type": "array",
           "items": { "$ref": "#/definitions/Port" },
           "default": [],
-          "description": "Public input signature. For subnets, these define the external interface and drive generation of GraphInput boundary nodes."
+          "description": "Input port schema for this node type."
         },
-
         "outputs": {
           "type": "array",
           "items": { "$ref": "#/definitions/Port" },
           "default": [],
-          "description": "Public output signature. For subnets, these define the external interface and drive generation of GraphOutput boundary nodes."
+          "description": "Output port schema for this node type."
         },
+        "props": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PropDefinition" },
+          "default": [],
+          "description": "Property schema for this node type."
+        },
+        "description": { "type": "string" }
+      },
+      "required": ["context", "category", "type"],
+      "additionalProperties": false
+    },
 
+    "Node": {
+      "type": "object",
+      "description": "A node instance in a graph. References a NodeDefinition by type. Subnets (nodes with child nodes/edges) define their own interface via inputs/outputs/props.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Node instance name, unique within its parent scope. Identity is name-within-parent-scope; rename/move is identity change."
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reference to a NodeDefinition.type."
+        },
+        "kind": {
+          "$ref": "#/definitions/NodeKind",
+          "description": "Optional. If omitted, tooling may infer 'subnet' when nodes/edges exist; otherwise 'node'."
+        },
+        "meta": { "$ref": "#/definitions/Metadata" },
         "props": {
           "type": "array",
           "items": { "$ref": "#/definitions/Prop" },
           "default": [],
-          "description": "Public parameter signature (configuration). Values may be literals or Ref objects."
+          "description": "Configured property values for this instance."
         },
-
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Port" },
+          "default": [],
+          "description": "For subnets only: defines the external input interface and drives generation of GraphInput boundary nodes."
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Port" },
+          "default": [],
+          "description": "For subnets only: defines the external output interface and drives generation of GraphOutput boundary nodes."
+        },
         "nodes": {
           "type": "array",
           "items": { "$ref": "#/definitions/Node" },
           "default": [],
-          "description": "Child nodes (subgraph). Presence implies this Node is a subnet/folder/graph."
+          "description": "Child nodes (subgraph). Presence implies this Node is a subnet."
         },
-
         "edges": {
           "type": "array",
           "items": { "$ref": "#/definitions/Edge" },
           "default": [],
-          "description": "Edges connecting child nodes. In-scope only (endpoints must reference sibling nodes in this Node.nodes)."
+          "description": "Edges connecting child nodes. In-scope only."
         },
-
         "groups": {
           "type": "array",
           "items": { "$ref": "#/definitions/Group" },
           "default": [],
           "description": "Optional UI grouping of child nodes."
         }
-
       },
-      "required": ["name", "context", "category", "type"],
+      "required": ["name", "type"],
+      "additionalProperties": false
+    },
+
+    "Graph": {
+      "type": "object",
+      "description": "Top-level graph container with optional inline definitions and node instances.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Graph name."
+        },
+        "definitions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/NodeDefinition" },
+          "default": [],
+          "description": "Inline node type definitions. Definitions can also be provided externally to an evaluator."
+        },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Node" },
+          "default": [],
+          "description": "Node instances in this graph."
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Edge" },
+          "default": [],
+          "description": "Edges connecting nodes."
+        },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Group" },
+          "default": [],
+          "description": "Optional UI grouping of nodes."
+        },
+        "meta": { "$ref": "#/definitions/Metadata" }
+      },
+      "required": ["name", "nodes", "edges"],
       "additionalProperties": false
     }
   },
