@@ -11,9 +11,10 @@ const PORT_RADIUS = 6;
 interface GraphNodeProps {
   node: Node;
   onStartConnect: (nodeId: string, portName: string, isOutput: boolean, position: { x: number; y: number }) => void;
+  onEndConnect?: (nodeId: string, portName: string, isOutput: boolean) => void;
 }
 
-export function GraphNode({ node, onStartConnect }: GraphNodeProps) {
+export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps) {
   const { state, dispatch, getDefinition, getShortName } = useGraph();
   const { selection, selectNodes } = useSelection();
   const { diveInto } = useNavigation();
@@ -80,6 +81,13 @@ export function GraphNode({ node, onStartConnect }: GraphNodeProps) {
     const portX = isOutput ? x + NODE_WIDTH : x;
     onStartConnect(node.name, portName, isOutput, { x: portX, y: portY });
   }, [node.name, x, y, onStartConnect]);
+
+  const handlePortMouseUp = useCallback((e: React.MouseEvent, portName: string, isOutput: boolean) => {
+    e.stopPropagation();
+    if (state.connecting.active && onEndConnect) {
+      onEndConnect(node.name, portName, isOutput);
+    }
+  }, [node.name, state.connecting.active, onEndConnect]);
 
   const getPortColor = (type: string): string => {
     switch (type.toLowerCase()) {
@@ -156,11 +164,12 @@ export function GraphNode({ node, onStartConnect }: GraphNodeProps) {
             cx={0}
             cy={PORT_HEIGHT / 2}
             r={PORT_RADIUS}
-            fill={getPortColor(port.type)}
-            stroke="#1e293b"
+            fill={state.connecting.active && state.connecting.isOutput ? '#60a5fa' : getPortColor(port.type)}
+            stroke={state.connecting.active && state.connecting.isOutput ? '#3b82f6' : '#1e293b'}
             strokeWidth={2}
             style={{ cursor: 'crosshair' }}
             onMouseDown={(e) => handlePortMouseDown(e, port.name, false, i)}
+            onMouseUp={(e) => handlePortMouseUp(e, port.name, false)}
           />
           <text
             x={12}
@@ -181,11 +190,12 @@ export function GraphNode({ node, onStartConnect }: GraphNodeProps) {
             cx={NODE_WIDTH}
             cy={PORT_HEIGHT / 2}
             r={PORT_RADIUS}
-            fill={getPortColor(port.type)}
-            stroke="#1e293b"
+            fill={state.connecting.active && !state.connecting.isOutput ? '#60a5fa' : getPortColor(port.type)}
+            stroke={state.connecting.active && !state.connecting.isOutput ? '#3b82f6' : '#1e293b'}
             strokeWidth={2}
             style={{ cursor: 'crosshair' }}
             onMouseDown={(e) => handlePortMouseDown(e, port.name, true, i)}
+            onMouseUp={(e) => handlePortMouseUp(e, port.name, true)}
           />
           <text
             x={NODE_WIDTH - 12}

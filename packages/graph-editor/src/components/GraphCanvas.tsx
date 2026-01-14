@@ -139,6 +139,19 @@ export function GraphCanvas() {
     setConnectingEnd(position);
   }, [dispatch]);
 
+  const handleEndConnect = useCallback((
+    nodeId: string,
+    portName: string,
+    isOutput: boolean
+  ) => {
+    if (!state.connecting.active) return;
+    if (state.connecting.isOutput === isOutput) return;
+    if (state.connecting.sourceNode === nodeId) return;
+    
+    dispatch({ type: 'END_CONNECTING', nodeId, portName });
+    setConnectingEnd(null);
+  }, [state.connecting, dispatch]);
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
@@ -252,6 +265,7 @@ export function GraphCanvas() {
             key={node.name}
             node={node}
             onStartConnect={handleStartConnect}
+            onEndConnect={handleEndConnect}
           />
         ))}
 
