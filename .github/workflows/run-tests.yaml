@@ -15,16 +15,19 @@ jobs:
       - name: checkout 🛎️
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: node
         uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
+          cache: 'pnpm'
 
-      - name: Deps
-        run: |
-          yarn
-          yarn build
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Build packages
-        run: |
-          pnpm run build
+        run: pnpm run build
