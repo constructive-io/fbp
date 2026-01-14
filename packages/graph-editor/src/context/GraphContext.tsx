@@ -174,17 +174,21 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
     }
 
     case 'SELECT_NODES': {
-      const newSelection = action.additive
+      const newNodeSelection = action.additive
         ? new Set([...state.selection.nodeIds, ...action.nodeIds])
         : new Set(action.nodeIds);
-      return { ...state, selection: { ...state.selection, nodeIds: newSelection } };
+      // Clear edge selection when selecting nodes (unless additive)
+      const newEdgeSelection = action.additive ? state.selection.edgeIds : new Set<string>();
+      return { ...state, selection: { nodeIds: newNodeSelection, edgeIds: newEdgeSelection } };
     }
 
     case 'SELECT_EDGES': {
-      const newSelection = action.additive
+      const newEdgeSelection = action.additive
         ? new Set([...state.selection.edgeIds, ...action.edgeIds])
         : new Set(action.edgeIds);
-      return { ...state, selection: { ...state.selection, edgeIds: newSelection } };
+      // Clear node selection when selecting edges (unless additive)
+      const newNodeSelection = action.additive ? state.selection.nodeIds : new Set<string>();
+      return { ...state, selection: { nodeIds: newNodeSelection, edgeIds: newEdgeSelection } };
     }
 
     case 'CLEAR_SELECTION':

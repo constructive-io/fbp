@@ -19,6 +19,7 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
   const { selection, selectNodes } = useSelection();
   const { diveInto } = useNavigation();
   const [isDragging, setIsDragging] = useState(false);
+  const [hoveredPort, setHoveredPort] = useState<{ name: string; isOutput: boolean } | null>(null);
   const dragStart = useRef<{ x: number; y: number; nodeX: number; nodeY: number } | null>(null);
 
   const definition = getDefinition(node.type);
@@ -34,15 +35,28 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (e.detail === 2 && isSubnet) {
       diveInto(node.name);
       return;
     }
 
+    // Determine which nodes will be dragged BEFORE updating selection
+    // This avoids race conditions with async state updates
+    let nodesToDrag: string[];
     const additive = e.shiftKey;
-    if (!isSelected || additive) {
-      selectNodes([node.name], additive);
+
+    if (additive) {
+      // Shift-click: add to existing selection, drag all
+      nodesToDrag = [...Array.from(state.selection.nodeIds), node.name];
+      selectNodes([node.name], true);
+    } else if (isSelected) {
+      // Already selected without shift: drag all currently selected
+      nodesToDrag = Array.from(state.selection.nodeIds);
+    } else {
+      // Not selected, no shift: select only this node, drag only this node
+      nodesToDrag = [node.name];
+      selectNodes([node.name], false);
     }
 
     setIsDragging(true);
@@ -52,16 +66,13 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
       if (!dragStart.current) return;
       const dx = (moveEvent.clientX - dragStart.current.x) / state.view.zoom;
       const dy = (moveEvent.clientY - dragStart.current.y) / state.view.zoom;
-      
-      const selectedNodeIds = Array.from(state.selection.nodeIds);
-      if (selectedNodeIds.length > 0) {
-        dispatch({
-          type: 'MOVE_NODES',
-          nodeIds: selectedNodeIds,
-          delta: { x: dx, y: dy }
-        });
-        dragStart.current = { ...dragStart.current, x: moveEvent.clientX, y: moveEvent.clientY };
-      }
+
+      dispatch({
+        type: 'MOVE_NODES',
+        nodeIds: nodesToDrag,
+        delta: { x: dx, y: dy }
+      });
+      dragStart.current = { ...dragStart.current, x: moveEvent.clientX, y: moveEvent.clientY };
     };
 
     const handleMouseUp = () => {
@@ -106,17 +117,16 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
       onMouseDown={handleMouseDown}
       style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
     >
+      {/* Background fill */}
       <rect
         width={NODE_WIDTH}
         height={nodeHeight}
         rx={8}
         ry={8}
         fill="#1e293b"
-        stroke={isSelected ? '#3b82f6' : '#334155'}
-        strokeWidth={isSelected ? 2 : 1}
-        className="transition-all duration-150"
       />
-      
+
+      {/* Header background */}
       <rect
         width={NODE_WIDTH}
         height={NODE_HEADER_HEIGHT}
@@ -129,6 +139,17 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
         width={NODE_WIDTH}
         height={8}
         fill={isSubnet ? '#7c3aed' : '#334155'}
+      />
+
+      {/* Border on top of everything */}
+      <rect
+        width={NODE_WIDTH}
+        height={nodeHeight}
+        rx={8}
+        ry={8}
+        fill="none"
+        stroke={isSelected ? '#3b82f6' : '#334155'}
+        strokeWidth={isSelected ? 2 : 1}
       />
       
       <text
@@ -158,58 +179,72 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
         </text>
       )}
 
-      {inputs.map((port, i) => (
-        <g key={`input-${port.name}`} transform={`translate(0, ${NODE_HEADER_HEIGHT + i * PORT_HEIGHT})`}>
-          <circle
-            cx={0}
-            cy={PORT_HEIGHT / 2}
-            r={PORT_RADIUS}
-            fill={state.connecting.active && state.connecting.isOutput ? '#60a5fa' : getPortColor(port.type)}
-            stroke={state.connecting.active && state.connecting.isOutput ? '#3b82f6' : '#1e293b'}
-            strokeWidth={2}
-            style={{ cursor: 'crosshair' }}
-            onMouseDown={(e) => handlePortMouseDown(e, port.name, false, i)}
-            onMouseUp={(e) => handlePortMouseUp(e, port.name, false)}
-          />
-          <text
-            x={12}
-            y={PORT_HEIGHT / 2}
-            dominantBaseline="middle"
-            fill="#94a3b8"
-            fontSize={11}
-            fontFamily="system-ui, sans-serif"
-          >
-            {port.name}
-          </text>
-        </g>
-      ))}
+      {inputs.map((port, i) => {
+        const isValidDropTarget = state.connecting.active && state.connecting.isOutput && state.connecting.sourceNode !== node.name;
+        const isHovered = hoveredPort?.name === port.name && hoveredPort?.isOutput === false;
+        const highlight = isValidDropTarget && isHovered;
+        return (
+          <g key={`input-${port.name}`} transform={`translate(0, ${NODE_HEADER_HEIGHT + i * PORT_HEIGHT})`}>
+            <circle
+              cx={0}
+              cy={PORT_HEIGHT / 2}
+              r={PORT_RADIUS}
+              fill={highlight ? '#60a5fa' : getPortColor(port.type)}
+              stroke={highlight ? '#3b82f6' : '#1e293b'}
+              strokeWidth={2}
+              style={{ cursor: 'crosshair' }}
+              onMouseDown={(e) => handlePortMouseDown(e, port.name, false, i)}
+              onMouseUp={(e) => handlePortMouseUp(e, port.name, false)}
+              onMouseEnter={() => setHoveredPort({ name: port.name, isOutput: false })}
+              onMouseLeave={() => setHoveredPort(null)}
+            />
+            <text
+              x={12}
+              y={PORT_HEIGHT / 2}
+              dominantBaseline="middle"
+              fill="#94a3b8"
+              fontSize={11}
+              fontFamily="system-ui, sans-serif"
+            >
+              {port.name}
+            </text>
+          </g>
+        );
+      })}
 
-      {outputs.map((port, i) => (
-        <g key={`output-${port.name}`} transform={`translate(0, ${NODE_HEADER_HEIGHT + i * PORT_HEIGHT})`}>
-          <circle
-            cx={NODE_WIDTH}
-            cy={PORT_HEIGHT / 2}
-            r={PORT_RADIUS}
-            fill={state.connecting.active && !state.connecting.isOutput ? '#60a5fa' : getPortColor(port.type)}
-            stroke={state.connecting.active && !state.connecting.isOutput ? '#3b82f6' : '#1e293b'}
-            strokeWidth={2}
-            style={{ cursor: 'crosshair' }}
-            onMouseDown={(e) => handlePortMouseDown(e, port.name, true, i)}
-            onMouseUp={(e) => handlePortMouseUp(e, port.name, true)}
-          />
-          <text
-            x={NODE_WIDTH - 12}
-            y={PORT_HEIGHT / 2}
-            textAnchor="end"
-            dominantBaseline="middle"
-            fill="#94a3b8"
-            fontSize={11}
-            fontFamily="system-ui, sans-serif"
-          >
-            {port.name}
-          </text>
-        </g>
-      ))}
+      {outputs.map((port, i) => {
+        const isValidDropTarget = state.connecting.active && !state.connecting.isOutput && state.connecting.sourceNode !== node.name;
+        const isHovered = hoveredPort?.name === port.name && hoveredPort?.isOutput === true;
+        const highlight = isValidDropTarget && isHovered;
+        return (
+          <g key={`output-${port.name}`} transform={`translate(0, ${NODE_HEADER_HEIGHT + i * PORT_HEIGHT})`}>
+            <circle
+              cx={NODE_WIDTH}
+              cy={PORT_HEIGHT / 2}
+              r={PORT_RADIUS}
+              fill={highlight ? '#60a5fa' : getPortColor(port.type)}
+              stroke={highlight ? '#3b82f6' : '#1e293b'}
+              strokeWidth={2}
+              style={{ cursor: 'crosshair' }}
+              onMouseDown={(e) => handlePortMouseDown(e, port.name, true, i)}
+              onMouseUp={(e) => handlePortMouseUp(e, port.name, true)}
+              onMouseEnter={() => setHoveredPort({ name: port.name, isOutput: true })}
+              onMouseLeave={() => setHoveredPort(null)}
+            />
+            <text
+              x={NODE_WIDTH - 12}
+              y={PORT_HEIGHT / 2}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fill="#94a3b8"
+              fontSize={11}
+              fontFamily="system-ui, sans-serif"
+            >
+              {port.name}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }

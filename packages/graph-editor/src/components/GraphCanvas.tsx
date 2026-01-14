@@ -235,7 +235,7 @@ export function GraphCanvas() {
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      style={{ cursor: isPanning ? 'grabbing' : 'default' }}
+      style={{ cursor: isPanning ? 'grabbing' : 'default', userSelect: 'none' }}
     >
       <defs>
         <pattern

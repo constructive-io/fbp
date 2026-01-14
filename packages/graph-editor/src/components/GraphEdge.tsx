@@ -49,7 +49,6 @@ export function GraphEdge({ edge }: GraphEdgeProps) {
         stroke={isSelected ? '#3b82f6' : '#64748b'}
         strokeWidth={isSelected ? 3 : 2}
         strokeLinecap="round"
-        className="transition-all duration-150"
       />
     </g>
   );
