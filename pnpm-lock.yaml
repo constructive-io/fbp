@@ -54,6 +54,17 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/evaluator:
+    dependencies:
+      '@fbp/types':
+        specifier: workspace:*
+        version: link:../types/dist
+    devDependencies:
+      makage:
+        specifier: 0.1.9
+        version: 0.1.9
+    publishDirectory: dist
+
   packages/graph-editor:
     dependencies:
       '@fbp/types':
