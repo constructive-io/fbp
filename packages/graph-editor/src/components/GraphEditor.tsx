@@ -14,6 +14,8 @@ interface GraphEditorProps {
   showStatusBar?: boolean;
   className?: string;
   onGraphChange?: (graph: Graph) => void;
+  onSelectionChange?: (selectedNodeIds: string[]) => void;
+  evaluationResult?: unknown;
 }
 
 export function GraphEditor({
@@ -22,10 +24,12 @@ export function GraphEditor({
   showPropertiesPanel = true,
   showNodePalette = true,
   showStatusBar = true,
-  className = ''
+  className = '',
+  onSelectionChange,
+  evaluationResult
 }: GraphEditorProps) {
   return (
-    <GraphProvider initialGraph={graph} externalDefinitions={definitions}>
+    <GraphProvider initialGraph={graph} externalDefinitions={definitions} onSelectionChange={onSelectionChange}>
       <div className={`flex flex-col h-full bg-slate-900 ${className}`}>
         <div className="h-10 bg-slate-800 border-b border-slate-700 flex items-center px-4 flex-shrink-0">
           <span className="text-sm font-medium text-slate-300">FBP Graph Editor</span>
@@ -45,7 +49,7 @@ export function GraphEditor({
           
           {showPropertiesPanel && (
             <div className="w-72 flex-shrink-0 border-l border-slate-700">
-              <PropertiesPanel />
+              <PropertiesPanel evaluationResult={evaluationResult} />
             </div>
           )}
         </div>

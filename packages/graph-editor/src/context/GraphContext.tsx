@@ -402,10 +402,11 @@ interface GraphContextValue {
 
 const GraphContext = createContext<GraphContextValue | null>(null);
 
-export function GraphProvider({ children, initialGraph, externalDefinitions }: {
+export function GraphProvider({ children, initialGraph, externalDefinitions, onSelectionChange }: {
   children: ReactNode;
   initialGraph?: Graph;
   externalDefinitions?: NodeDefinition[];
+  onSelectionChange?: (selectedNodeIds: string[]) => void;
 }) {
   const [state, dispatch] = useReducer(graphReducer, {
     ...initialState,
@@ -415,6 +416,13 @@ export function GraphProvider({ children, initialGraph, externalDefinitions }: {
       ...(externalDefinitions || []).map(d => [d.type, d] as [string, NodeDefinition])
     ])
   });
+
+  // Call onSelectionChange when selection changes
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(Array.from(state.selection.nodeIds));
+    }
+  }, [state.selection.nodeIds, onSelectionChange]);
 
   const getDefinition = useCallback((type: string) => state.definitions.get(type), [state.definitions]);
   

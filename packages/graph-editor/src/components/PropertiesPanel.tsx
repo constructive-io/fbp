@@ -3,7 +3,11 @@ import { useGraph, useSelection } from '../context/GraphContext';
 import type { PropDefinition, Prop } from '@fbp/types';
 import { clsx } from 'clsx';
 
-export function PropertiesPanel() {
+interface PropertiesPanelProps {
+  evaluationResult?: unknown;
+}
+
+export function PropertiesPanel({ evaluationResult }: PropertiesPanelProps) {
   const { state, dispatch, getDefinition, getShortName, isChannelReference } = useGraph();
   const { selection } = useSelection();
 
@@ -66,6 +70,21 @@ export function PropertiesPanel() {
                 isChannelRef={isChannelReference(getPropValue(propDef.name))}
               />
             ))}
+          </div>
+        )}
+
+        {node.type === 'core/graph/output' && evaluationResult !== undefined && (
+          <div className="mt-6 pt-4 border-t border-slate-700">
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-3">Evaluated Result</div>
+            <div className="bg-slate-800 rounded p-3 overflow-auto max-h-64">
+              {typeof evaluationResult === 'number' ? (
+                <span className="text-2xl font-mono text-green-400">{evaluationResult}</span>
+              ) : (
+                <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap">
+                  {JSON.stringify(evaluationResult, null, 2)}
+                </pre>
+              )}
+            </div>
           </div>
         )}
       </div>

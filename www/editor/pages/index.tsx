@@ -1,8 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { GraphEditor } from '@fbp/graph-editor';
+import { evaluate } from '@fbp/evaluator';
+import type { NodeDefinitionWithImpl } from '@fbp/evaluator';
 import type { Graph } from '@fbp/types';
 
-const mathDefinitions = [
+const graphOutputDef: NodeDefinitionWithImpl = {
+  context: 'core',
+  category: 'graph',
+  type: 'core/graph/output',
+  inputs: [{ name: 'value', type: 'any' }],
+  outputs: [{ name: 'value', type: 'any' }],
+  props: [],
+  description: 'Graph output boundary node',
+  impl: (inputs) => ({ value: inputs.value }),
+};
+
+const mathDefinitions: NodeDefinitionWithImpl[] = [
   {
     context: 'js',
     category: 'const',
@@ -11,6 +24,7 @@ const mathDefinitions = [
     props: [
       { name: 'value', type: 'number', default: 0, description: 'The constant value' }
     ],
+    impl: (_inputs, props) => ({ value: props.value ?? 0 }),
   },
   {
     context: 'js',
@@ -21,6 +35,7 @@ const mathDefinitions = [
       { name: 'b', type: 'number' },
     ],
     outputs: [{ name: 'sum', type: 'number' }],
+    impl: (inputs) => ({ sum: (inputs.a ?? 0) + (inputs.b ?? 0) }),
   },
   {
     context: 'js',
@@ -31,10 +46,12 @@ const mathDefinitions = [
       { name: 'b', type: 'number' },
     ],
     outputs: [{ name: 'product', type: 'number' }],
+    impl: (inputs) => ({ product: (inputs.a ?? 0) * (inputs.b ?? 0) }),
   },
+  graphOutputDef,
 ];
 
-const uiDefinitions = [
+const uiDefinitions: NodeDefinitionWithImpl[] = [
   {
     context: 'ui',
     category: 'layout',
@@ -45,6 +62,14 @@ const uiDefinitions = [
       { name: 'className', type: 'string', default: '' },
       { name: 'key', type: 'string', required: true }
     ],
+    impl: (inputs, props) => ({
+      element: {
+        type: 'Page',
+        key: props.key,
+        props: { className: props.className },
+        children: inputs.children ?? []
+      }
+    }),
   },
   {
     context: 'ui',
@@ -56,6 +81,14 @@ const uiDefinitions = [
       { name: 'className', type: 'string', default: '' },
       { name: 'key', type: 'string', required: true }
     ],
+    impl: (inputs, props) => ({
+      element: {
+        type: 'Form',
+        key: props.key,
+        props: { className: props.className },
+        children: inputs.children ?? []
+      }
+    }),
   },
   {
     context: 'ui',
@@ -69,6 +102,17 @@ const uiDefinitions = [
       { name: 'type', type: 'string', default: 'text' },
       { name: 'placeholder', type: 'string', default: '' }
     ],
+    impl: (_inputs, props) => ({
+      element: {
+        type: 'Input',
+        key: props.key,
+        props: {
+          name: props.name,
+          type: props.type ?? 'text',
+          placeholder: props.placeholder ?? ''
+        }
+      }
+    }),
   },
   {
     context: 'ui',
@@ -81,7 +125,18 @@ const uiDefinitions = [
       { name: 'type', type: 'string', default: 'button' },
       { name: 'text', type: 'string', required: true }
     ],
+    impl: (_inputs, props) => ({
+      element: {
+        type: 'Button',
+        key: props.key,
+        props: {
+          type: props.type ?? 'button',
+          text: props.text
+        }
+      }
+    }),
   },
+  graphOutputDef,
 ];
 
 const examples: Record<string, Graph> = {
@@ -91,11 +146,13 @@ const examples: Record<string, Graph> = {
     nodes: [
       { name: 'num1', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 100 } },
       { name: 'num2', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
-      { name: 'add', type: 'js/math/add', meta: { x: 350, y: 150 } }
+      { name: 'add', type: 'js/math/add', meta: { x: 350, y: 150 } },
+      { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 550, y: 150 } }
     ],
     edges: [
       { src: { node: 'num1', port: 'value' }, dst: { node: 'add', port: 'a' } },
-      { src: { node: 'num2', port: 'value' }, dst: { node: 'add', port: 'b' } }
+      { src: { node: 'num2', port: 'value' }, dst: { node: 'add', port: 'b' } },
+      { src: { node: 'add', port: 'sum' }, dst: { node: '@out/result', port: 'value' } }
     ]
   },
   'Chained Math ((2 + 3) * 4 = 20)': {
@@ -106,13 +163,15 @@ const examples: Record<string, Graph> = {
       { name: 'num2', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
       { name: 'num3', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 4 }], meta: { x: 100, y: 400 } },
       { name: 'add', type: 'js/math/add', meta: { x: 350, y: 150 } },
-      { name: 'multiply', type: 'js/math/multiply', meta: { x: 600, y: 200 } }
+      { name: 'multiply', type: 'js/math/multiply', meta: { x: 600, y: 200 } },
+      { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 850, y: 200 } }
     ],
     edges: [
       { src: { node: 'num1', port: 'value' }, dst: { node: 'add', port: 'a' } },
       { src: { node: 'num2', port: 'value' }, dst: { node: 'add', port: 'b' } },
       { src: { node: 'add', port: 'sum' }, dst: { node: 'multiply', port: 'a' } },
-      { src: { node: 'num3', port: 'value' }, dst: { node: 'multiply', port: 'b' } }
+      { src: { node: 'num3', port: 'value' }, dst: { node: 'multiply', port: 'b' } },
+      { src: { node: 'multiply', port: 'product' }, dst: { node: '@out/result', port: 'value' } }
     ]
   },
   'Simple Page': {
@@ -127,9 +186,12 @@ const examples: Record<string, Graph> = {
           { name: 'className', type: 'string', value: 'min-h-screen' }
         ],
         meta: { x: 300, y: 150 }
-      }
+      },
+      { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 550, y: 150 } }
     ],
-    edges: []
+    edges: [
+      { src: { node: 'page', port: 'element' }, dst: { node: '@out/result', port: 'value' } }
+    ]
   },
   'Form with Children': {
     name: 'form-with-children',
@@ -164,11 +226,13 @@ const examples: Record<string, Graph> = {
           { name: 'text', type: 'string', value: 'Subscribe' }
         ],
         meta: { x: 100, y: 300 }
-      }
+      },
+      { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 750, y: 200 } }
     ],
     edges: [
       { src: { node: 'emailInput', port: 'element' }, dst: { node: 'form', port: 'children' } },
-      { src: { node: 'submitButton', port: 'element' }, dst: { node: 'form', port: 'children' } }
+      { src: { node: 'submitButton', port: 'element' }, dst: { node: 'form', port: 'children' } },
+      { src: { node: 'form', port: 'element' }, dst: { node: '@out/result', port: 'value' } }
     ]
   },
   'Newsletter Page': {
@@ -213,12 +277,14 @@ const examples: Record<string, Graph> = {
           { name: 'text', type: 'string', value: 'Subscribe' }
         ],
         meta: { x: 100, y: 300 }
-      }
+      },
+      { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 950, y: 200 } }
     ],
     edges: [
       { src: { node: 'emailInput', port: 'element' }, dst: { node: 'form', port: 'children' } },
       { src: { node: 'submitButton', port: 'element' }, dst: { node: 'form', port: 'children' } },
-      { src: { node: 'form', port: 'element' }, dst: { node: 'page', port: 'children' } }
+      { src: { node: 'form', port: 'element' }, dst: { node: 'page', port: 'children' } },
+      { src: { node: 'page', port: 'element' }, dst: { node: '@out/result', port: 'value' } }
     ]
   }
 };
@@ -227,7 +293,32 @@ const exampleNames = Object.keys(examples);
 
 export default function Home() {
   const [selectedExample, setSelectedExample] = useState(exampleNames[0]);
+  const [evaluationResult, setEvaluationResult] = useState<unknown>(undefined);
   const graph = examples[selectedExample];
+
+  const handleSelectionChange = (selectedNodeIds: string[]) => {
+    if (selectedNodeIds.length === 1) {
+      const nodeId = selectedNodeIds[0];
+      const node = graph.nodes.find(n => n.name === nodeId);
+      if (node && node.type === 'core/graph/output') {
+        try {
+          const result = evaluate(graph as Graph, {
+            definitions: graph.definitions as NodeDefinitionWithImpl[],
+            outputNode: nodeId,
+            outputPort: 'value'
+          });
+          setEvaluationResult(result);
+        } catch (e) {
+          console.error('Evaluation error:', e);
+          setEvaluationResult(undefined);
+        }
+      } else {
+        setEvaluationResult(undefined);
+      }
+    } else {
+      setEvaluationResult(undefined);
+    }
+  };
 
   return (
     <div className="h-screen w-screen flex flex-col">
@@ -249,7 +340,12 @@ export default function Home() {
         </span>
       </div>
       <div className="flex-1">
-        <GraphEditor key={selectedExample} graph={graph} />
+        <GraphEditor 
+          key={selectedExample} 
+          graph={graph} 
+          onSelectionChange={handleSelectionChange}
+          evaluationResult={evaluationResult}
+        />
       </div>
     </div>
   );
