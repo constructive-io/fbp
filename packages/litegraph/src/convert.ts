@@ -13,12 +13,12 @@ export function convertToLitegraph(graph: Graph): Litegraph {
     inputs: node.inputs?.map(input => ({
       name: input.name,
       type: input.type,
-      link: null  // Initial null, to be populated in the links processing
+      link: null as number | null  // Initial null, to be populated in the links processing
     })) ?? [],
     outputs: node.outputs?.map(output => ({
       name: output.name,
       type: output.type,
-      links: []  // Initial empty array, to be populated in the links processing
+      links: [] as number[]  // Initial empty array, to be populated in the links processing
     })) ?? []
   }));
 

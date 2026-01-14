@@ -16,7 +16,7 @@ Flow-Based Programming TypeScript utilities for the Interweb
 
 This repository contains the following packages:
 
-- [`@fbp/types`](https://github.com/interweb-inc/data-flow/tree/main/packages/types)  
+- [`@fbp/types`](https://github.com/constructive-io/fpb/tree/main/packages/types)  
   Flow-Based Programming TypeScript Types & Definitions
 
 ## Credits
