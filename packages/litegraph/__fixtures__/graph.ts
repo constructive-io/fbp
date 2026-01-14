@@ -31,7 +31,7 @@ export const graph: Graph = {
           type: 'number',
         },
       ],
-      params: [],
+      props: [],
     },
     {
       name: 'mult1',
@@ -58,7 +58,7 @@ export const graph: Graph = {
           type: 'number',
         },
       ],
-      params: [],
+      props: [],
     }
   ],
   edges: [
