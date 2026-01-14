@@ -19,6 +19,13 @@ export interface Prop {
   value?: Ref | any;
   description?: string;
 }
+export interface PropDefinition {
+  name: string;
+  type: string;
+  default?: any;
+  description?: string;
+  required?: boolean;
+}
 export interface EdgeEndpoint {
   node: string;
   port: string;
@@ -35,17 +42,32 @@ export interface Group {
   meta?: Metadata;
 }
 export type NodeKind = "node" | "subnet" | "graphInput" | "graphOutput" | "graphProp";
-export interface Node {
-  name: string;
-  kind?: NodeKind;
+export interface NodeDefinition {
   context: string;
   category: string;
   type: string;
-  meta?: Metadata;
   inputs?: Port[];
   outputs?: Port[];
+  props?: PropDefinition[];
+  description?: string;
+}
+export interface Node {
+  name: string;
+  type: string;
+  kind?: NodeKind;
+  meta?: Metadata;
   props?: Prop[];
+  inputs?: Port[];
+  outputs?: Port[];
   nodes?: Node[];
   edges?: Edge[];
   groups?: Group[];
+}
+export interface Graph {
+  name: string;
+  definitions?: NodeDefinition[];
+  nodes: Node[];
+  edges: Edge[];
+  groups?: Group[];
+  meta?: Metadata;
 }
