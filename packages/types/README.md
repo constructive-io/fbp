@@ -69,7 +69,7 @@ Defined directly on the node:
 
 * `inputs[]` — dataflow inputs
 * `outputs[]` — dataflow outputs
-* `params[]` — configuration parameters
+* `props[]` — configuration parameters
 
 This signature is the **public API** of the node.
 
@@ -102,9 +102,9 @@ This mirrors Houdini’s “typed sockets” philosophy.
 
 ---
 
-## Parameters vs Dataflow
+## Props vs Dataflow
 
-Parameters (`params`) are **not dataflow**.
+Props (`props`) are **not dataflow**.
 
 * They configure node behavior
 * They are not connected by edges
@@ -118,7 +118,7 @@ Example parameter value:
 
 Breaking refs on rename is expected and accepted.
 
-> Note: You may optionally choose to expose parameters visually via `@props` boundary ports, but params remain a configuration contract (not implicit dataflow).
+> Note: You may optionally choose to expose parameters visually via `@props` boundary ports, but props remain a configuration contract (not implicit dataflow).
 
 ---
 
@@ -181,7 +181,7 @@ A subnet’s public interface is defined by its own:
 
 * `inputs`
 * `outputs`
-* `params`
+* `props`
 
 This is the canonical contract.
 Nothing is inferred from internal wiring.
@@ -201,7 +201,7 @@ They exist so internal edges have stable anchors.
 
 * `graphInput` — exposes subnet inputs inside the subnet
 * `graphOutput` — collects subnet outputs inside the subnet
-* `graphProp` — exposes subnet params inside the subnet
+* `graphProp` — exposes subnet props inside the subnet
 
 ### Canonical Boundary Convention
 
@@ -215,7 +215,7 @@ Each boundary node exposes **one port per declared signature entry**:
 
 * `@in` exposes **outputs** with port names matching `inputs[].name`
 * `@out` exposes **inputs** with port names matching `outputs[].name`
-* `@props` exposes **outputs** with port names matching `params[].name`
+* `@props` exposes **outputs** with port names matching `props[].name`
 
 #### Example
 
@@ -225,7 +225,7 @@ Given subnet signature:
 {
   "inputs": [{ "name": "users", "type": "User[]" }],
   "outputs": [{ "name": "adults", "type": "User[]" }],
-  "params": [{ "name": "minAge", "type": "number", "value": 18 }]
+  "props": [{ "name": "minAge", "type": "number", "value": 18 }]
 }
 ```
 
@@ -258,7 +258,7 @@ Boundary nodes are generated deterministically from the subnet signature:
 | ----------------- | ------------- | -------------- | ------------------ |
 | `inputs[i]`       | `@in`         | output         | `inputs[i].name`   |
 | `outputs[i]`      | `@out`        | input          | `outputs[i].name`  |
-| `params[i]`       | `@props`      | output         | `params[i].name`   |
+| `props[i]`       | `@props`      | output         | `props[i].name`   |
 
 Boundary nodes may be regenerated at any time and **must not affect identity**.
 
@@ -301,7 +301,7 @@ It may be partially or fully excluded from hashing depending on your canonicaliz
 
   * `inputs`
   * `outputs`
-  * `params`
+  * `props`
 * Edges must reference existing ports
 * Fan-in requires explicit merge nodes
 * Branching requires explicit output ports
@@ -313,7 +313,7 @@ It may be partially or fully excluded from hashing depending on your canonicaliz
 
 Recommended practices:
 
-* Sort `inputs`, `outputs`, `params` by name
+* Sort `inputs`, `outputs`, `props` by name
 * Sort `nodes` by name
 * Sort `edges` deterministically
 * Exclude UI-only metadata if desired
