@@ -54,6 +54,7 @@ type GraphAction =
   | { type: 'CLEAR_SELECTION' }
   | { type: 'SELECT_ALL' }
   | { type: 'DUPLICATE_SELECTION' }
+  | { type: 'COLLAPSE_SELECTION' }
   | { type: 'MOVE_NODES'; nodeIds: string[]; delta: Point }
   | { type: 'SET_VIEW'; view: Partial<ViewState> }
   | { type: 'DIVE_INTO'; nodeId: string }
@@ -313,6 +314,164 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
       };
     }
 
+    case 'COLLAPSE_SELECTION': {
+      const selectedNodeIds = state.selection.nodeIds;
+      if (selectedNodeIds.size < 2) return state;
+
+      const selectedNodes = state.graph.nodes.filter(n => selectedNodeIds.has(n.name));
+      
+      // Calculate center position for the subnet node
+      let sumX = 0, sumY = 0;
+      selectedNodes.forEach(n => {
+        sumX += n.meta?.x || 0;
+        sumY += n.meta?.y || 0;
+      });
+      const centerX = sumX / selectedNodes.length;
+      const centerY = sumY / selectedNodes.length;
+
+      // Categorize edges
+      const internalEdges: Edge[] = [];
+      const incomingEdges: Edge[] = []; // External -> Selected
+      const outgoingEdges: Edge[] = []; // Selected -> External
+      
+      state.graph.edges.forEach(edge => {
+        const srcSelected = selectedNodeIds.has(edge.src.node);
+        const dstSelected = selectedNodeIds.has(edge.dst.node);
+        
+        if (srcSelected && dstSelected) {
+          internalEdges.push(edge);
+        } else if (!srcSelected && dstSelected) {
+          incomingEdges.push(edge);
+        } else if (srcSelected && !dstSelected) {
+          outgoingEdges.push(edge);
+        }
+      });
+
+      // Find existing boundary nodes in selection
+      const existingInputs = selectedNodes.filter(n => n.name.startsWith('@in/'));
+      const existingOutputs = selectedNodes.filter(n => n.name.startsWith('@out/'));
+      const existingProps = selectedNodes.filter(n => n.name.startsWith('@prop/'));
+
+      // Create new boundary nodes for external connections
+      const newInputNodes: Node[] = [];
+      const newOutputNodes: Node[] = [];
+      const newInternalEdges: Edge[] = [];
+      const subnetExternalEdges: Edge[] = [];
+
+      // Generate unique subnet name
+      const existingSubnets = state.graph.nodes.filter(n => n.kind === 'subnet' || n.name.startsWith('subnet'));
+      const subnetNumber = existingSubnets.length + 1;
+      const subnetName = `subnet${subnetNumber}`;
+
+      // Process incoming edges - create @in/ nodes
+      let inputCounter = existingInputs.length + 1;
+      const incomingPortMap = new Map<string, string>(); // "dstNode:dstPort" -> inputPortName
+      
+      incomingEdges.forEach(edge => {
+        const key = `${edge.dst.node}:${edge.dst.port}`;
+        if (!incomingPortMap.has(key)) {
+          const inputName = `input${inputCounter++}`;
+          const inputNodeName = `@in/${inputName}`;
+          incomingPortMap.set(key, inputName);
+          
+          // Create @in/ node inside subnet
+          newInputNodes.push({
+            name: inputNodeName,
+            type: 'core/graph/input',
+            kind: 'graphInput',
+            meta: { x: (edge.dst.node ? (selectedNodes.find(n => n.name === edge.dst.node)?.meta?.x || 0) - 150 : 0), y: selectedNodes.find(n => n.name === edge.dst.node)?.meta?.y || 0 }
+          });
+          
+          // Create internal edge from @in/ to original destination
+          newInternalEdges.push({
+            src: { node: inputNodeName, port: 'value' },
+            dst: { node: edge.dst.node, port: edge.dst.port }
+          });
+        }
+        
+        // Create external edge from original source to subnet input
+        const inputPortName = incomingPortMap.get(key)!;
+        subnetExternalEdges.push({
+          src: { node: edge.src.node, port: edge.src.port },
+          dst: { node: subnetName, port: inputPortName }
+        });
+      });
+
+      // Process outgoing edges - create @out/ nodes
+      let outputCounter = existingOutputs.length + 1;
+      const outgoingPortMap = new Map<string, string>(); // "srcNode:srcPort" -> outputPortName
+      
+      outgoingEdges.forEach(edge => {
+        const key = `${edge.src.node}:${edge.src.port}`;
+        if (!outgoingPortMap.has(key)) {
+          const outputName = `output${outputCounter++}`;
+          const outputNodeName = `@out/${outputName}`;
+          outgoingPortMap.set(key, outputName);
+          
+          // Create @out/ node inside subnet
+          newOutputNodes.push({
+            name: outputNodeName,
+            type: 'core/graph/output',
+            kind: 'graphOutput',
+            meta: { x: (selectedNodes.find(n => n.name === edge.src.node)?.meta?.x || 0) + 150, y: selectedNodes.find(n => n.name === edge.src.node)?.meta?.y || 0 }
+          });
+          
+          // Create internal edge from original source to @out/
+          newInternalEdges.push({
+            src: { node: edge.src.node, port: edge.src.port },
+            dst: { node: outputNodeName, port: 'value' }
+          });
+        }
+        
+        // Create external edge from subnet output to original destination
+        const outputPortName = outgoingPortMap.get(key)!;
+        subnetExternalEdges.push({
+          src: { node: subnetName, port: outputPortName },
+          dst: { node: edge.dst.node, port: edge.dst.port }
+        });
+      });
+
+      // Build subnet inputs/outputs/props from boundary nodes
+      const subnetInputs = [
+        ...existingInputs.map(n => ({ name: n.name.replace('@in/', ''), type: 'any' })),
+        ...Array.from(incomingPortMap.values()).map(name => ({ name, type: 'any' }))
+      ];
+      const subnetOutputs = [
+        ...existingOutputs.map(n => ({ name: n.name.replace('@out/', ''), type: 'any' })),
+        ...Array.from(outgoingPortMap.values()).map(name => ({ name, type: 'any' }))
+      ];
+      const subnetProps = existingProps.map(n => ({ name: n.name.replace('@prop/', ''), type: 'any' }));
+
+      // Create the subnet node
+      const subnetNode: Node = {
+        name: subnetName,
+        type: 'subnet',
+        kind: 'subnet',
+        meta: { x: centerX, y: centerY },
+        inputs: subnetInputs,
+        outputs: subnetOutputs,
+        props: subnetProps.map(p => ({ name: p.name, type: p.type, value: undefined as unknown })),
+        nodes: [...selectedNodes, ...newInputNodes, ...newOutputNodes],
+        edges: [...internalEdges, ...newInternalEdges]
+      };
+
+      // Remove selected nodes and their edges from main graph
+      const remainingNodes = state.graph.nodes.filter(n => !selectedNodeIds.has(n.name));
+      const remainingEdges = state.graph.edges.filter(e => 
+        !selectedNodeIds.has(e.src.node) && !selectedNodeIds.has(e.dst.node)
+      );
+
+      return {
+        ...state,
+        graph: {
+          ...state.graph,
+          nodes: [...remainingNodes, subnetNode],
+          edges: [...remainingEdges, ...subnetExternalEdges]
+        },
+        selection: { nodeIds: new Set([subnetName]), edgeIds: new Set() }
+      };
+    }
+
     case 'MOVE_NODES': {
       const nodeIdSet = new Set(action.nodeIds);
       const nodes = state.graph.nodes.map(n => {
@@ -534,6 +693,7 @@ export function useSelection() {
     clearSelection: () => dispatch({ type: 'CLEAR_SELECTION' }),
     selectAll: () => dispatch({ type: 'SELECT_ALL' }),
     duplicateSelection: () => dispatch({ type: 'DUPLICATE_SELECTION' }),
+    collapseSelection: () => dispatch({ type: 'COLLAPSE_SELECTION' }),
     deleteSelection: () => {
       dispatch({ type: 'DELETE_NODES', nodeIds: Array.from(state.selection.nodeIds) });
       dispatch({ type: 'DELETE_EDGES', edgeIds: Array.from(state.selection.edgeIds) });
