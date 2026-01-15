@@ -598,4 +598,59 @@ describe('evaluate', () => {
       });
     });
   });
+
+  describe('graphInput default values', () => {
+    it('should use default prop value when no external input is provided', async () => {
+      const graph: Graph = {
+        name: 'input-default-test',
+        nodes: [
+          { 
+            name: '@in/value', 
+            type: 'core/graph/input', 
+            kind: 'graphInput',
+            props: [{ name: 'default', type: 'number', value: 42 }]
+          },
+          { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput' }
+        ],
+        edges: [
+          { src: { node: '@in/value', port: 'value' }, dst: { node: '@out/result', port: 'value' } }
+        ]
+      };
+
+      const result = await evaluate(graph, {
+        definitions: uiDefinitions,
+        outputNode: '@out/result',
+        outputPort: 'value'
+      });
+
+      expect(result).toBe(42);
+    });
+
+    it('should prefer external input over default prop value', async () => {
+      const graph: Graph = {
+        name: 'input-external-test',
+        nodes: [
+          { 
+            name: '@in/value', 
+            type: 'core/graph/input', 
+            kind: 'graphInput',
+            props: [{ name: 'default', type: 'number', value: 42 }]
+          },
+          { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput' }
+        ],
+        edges: [
+          { src: { node: '@in/value', port: 'value' }, dst: { node: '@out/result', port: 'value' } }
+        ]
+      };
+
+      const result = await evaluate(graph, {
+        definitions: uiDefinitions,
+        outputNode: '@out/result',
+        outputPort: 'value',
+        inputs: { value: 100 }
+      });
+
+      expect(result).toBe(100);
+    });
+  });
 });

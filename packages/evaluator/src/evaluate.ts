@@ -61,7 +61,12 @@ export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<
     // Handle special boundary nodes (@in/, @out/, @prop/)
     if (nodeName.startsWith('@in/')) {
       const inputName = nodeName.slice(4); // Remove '@in/' prefix
-      const value = inputs[inputName];
+      // Check external inputs first, then fall back to node's default prop
+      let value = inputs[inputName];
+      if (value === undefined) {
+        const defaultProp = node.props?.find(p => p.name === 'default');
+        value = defaultProp?.value;
+      }
       const result = { value };
       cache.set(nodeName, result);
       return result;
