@@ -7,6 +7,7 @@ import { screenToCanvas, clamp } from '../utils/geometry';
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2;
 const GRID_SIZE = 20;
+const BOUNDARY_NODE_TYPES = ['core/graph/input', 'core/graph/output', 'core/graph/prop'];
 
 export function GraphCanvas() {
   const { state, dispatch } = useGraph();
@@ -275,6 +276,47 @@ export function GraphCanvas() {
     }
   }, []);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/fbp-node')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('application/fbp-node');
+    if (!data) return;
+
+    try {
+      const { type, isBoundary } = JSON.parse(data);
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const position = screenToCanvas(
+        { x: e.clientX - rect.left, y: e.clientY - rect.top },
+        state.view.pan,
+        state.view.zoom
+      );
+
+      if (isBoundary) {
+        const boundaryType = type === 'core/graph/input' ? 'input' 
+          : type === 'core/graph/output' ? 'output' 
+          : 'prop';
+        dispatch({ type: 'ADD_BOUNDARY_NODE', boundaryType, position });
+      } else {
+        const newNode = {
+          name: `${type.split('/').pop()}_${Date.now().toString(36)}`,
+          type,
+          meta: position
+        };
+        dispatch({ type: 'ADD_NODE', node: newNode });
+      }
+    } catch (err) {
+      console.error('Failed to parse dropped node data:', err);
+    }
+  }, [state.view, dispatch]);
+
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -319,6 +361,8 @@ export function GraphCanvas() {
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       style={{ cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default', userSelect: 'none', touchAction: 'none' }}
     >
       <defs>

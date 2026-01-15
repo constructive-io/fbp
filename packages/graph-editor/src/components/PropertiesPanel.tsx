@@ -1,8 +1,10 @@
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useGraph, useSelection, useScopedGraph } from '../context/GraphContext';
 import type { PropDefinition, Prop, Graph } from '@fbp/types';
 import { clsx } from 'clsx';
 import { CodeEditor } from './CodeEditor';
+
+const BOUNDARY_PREFIXES = ['@in/', '@out/', '@prop/'];
 
 // Type for evaluate function passed from parent
 type EvaluateFn = (graph: Graph, options: { definitions: any[]; outputNode: string; outputPort: string }) => Promise<any>;
@@ -116,11 +118,76 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
     dispatch({ type: 'SET_NODE_PROP', nodeId, propName, value });
   };
 
+  const isBoundaryNode = BOUNDARY_PREFIXES.some(prefix => node.name.startsWith(prefix));
+  const boundaryPrefix = BOUNDARY_PREFIXES.find(prefix => node.name.startsWith(prefix)) || '';
+  const editableName = isBoundaryNode ? node.name.slice(boundaryPrefix.length) : node.name;
+  
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(editableName);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    setEditedName(editableName);
+    setIsEditingName(false);
+  }, [editableName]);
+  
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+  
+  const handleNameSubmit = useCallback(() => {
+    if (editedName && editedName !== editableName) {
+      const newFullName = isBoundaryNode ? `${boundaryPrefix}${editedName}` : editedName;
+      dispatch({ type: 'RENAME_NODE', oldName: node.name, newName: newFullName });
+    }
+    setIsEditingName(false);
+  }, [editedName, editableName, isBoundaryNode, boundaryPrefix, node.name, dispatch]);
+  
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSubmit();
+    } else if (e.key === 'Escape') {
+      setEditedName(editableName);
+      setIsEditingName(false);
+    }
+  }, [handleNameSubmit, editableName]);
+
   return (
     <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700">
       <div className="p-3 border-b border-slate-700">
         <div className="text-xs text-slate-500 mb-1">Node</div>
-        <div className="font-semibold text-white">{node.name}</div>
+        <div className="font-semibold text-white flex items-center gap-1">
+          {isBoundaryNode && (
+            <span className="text-slate-500">{boundaryPrefix}</span>
+          )}
+          {isBoundaryNode ? (
+            isEditingName ? (
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={handleNameSubmit}
+                onKeyDown={handleNameKeyDown}
+                className="bg-slate-800 border border-blue-500 rounded px-1 py-0.5 text-white text-sm focus:outline-none"
+                style={{ width: `${Math.max(editedName.length, 5) * 8 + 16}px` }}
+              />
+            ) : (
+              <span 
+                onClick={() => setIsEditingName(true)}
+                className="cursor-pointer hover:bg-slate-700 px-1 py-0.5 rounded"
+                title="Click to edit name"
+              >
+                {editableName}
+              </span>
+            )
+          ) : (
+            <span>{node.name}</span>
+          )}
+        </div>
         <div className="text-xs text-slate-400 mt-1 font-mono">{node.type}</div>
       </div>
 

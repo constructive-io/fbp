@@ -112,7 +112,8 @@ type GraphAction =
   | { type: 'START_BOX_SELECT'; start: Point }
   | { type: 'UPDATE_BOX_SELECT'; end: Point }
   | { type: 'MOVE_BOX_SELECT'; delta: Point }
-  | { type: 'END_BOX_SELECT' };
+  | { type: 'END_BOX_SELECT' }
+  | { type: 'RENAME_NODE'; oldName: string; newName: string };
 
 function generateId(): string {
   return `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -985,6 +986,71 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
         boxSelect: { active: false, start: null, end: null, previewNodeIds: new Set() },
         selection: { ...state.selection, nodeIds: previewNodeIds }
       };
+    }
+
+    case 'RENAME_NODE': {
+      const { oldName, newName } = action;
+      if (oldName === newName) return state;
+      
+      // Check if new name already exists in current scope
+      const scopedNodes = getNodesInScope(state.graph, state.cwd);
+      if (scopedNodes.some(n => n.name === newName)) {
+        console.warn(`Node with name "${newName}" already exists`);
+        return state;
+      }
+      
+      // Update node name
+      let newGraph = updateNodesAtScope(state.graph, state.cwd, nodes =>
+        nodes.map(n => n.name === oldName ? { ...n, name: newName } : n)
+      );
+      
+      // Update edges that reference this node
+      newGraph = updateEdgesAtScope(newGraph, state.cwd, edges =>
+        edges.map(e => ({
+          ...e,
+          src: e.src.node === oldName ? { ...e.src, node: newName } : e.src,
+          dst: e.dst.node === oldName ? { ...e.dst, node: newName } : e.dst
+        }))
+      );
+      
+      // For boundary nodes at root level, update graph.inputs/outputs/props
+      if (isRootCwd(state.cwd)) {
+        const oldPortName = oldName.replace(/^@(in|out|prop)\//, '');
+        const newPortName = newName.replace(/^@(in|out|prop)\//, '');
+        
+        if (oldName.startsWith('@in/')) {
+          newGraph = {
+            ...newGraph,
+            inputs: (newGraph.inputs || []).map(p => 
+              p.name === oldPortName ? { ...p, name: newPortName } : p
+            )
+          };
+        } else if (oldName.startsWith('@out/')) {
+          newGraph = {
+            ...newGraph,
+            outputs: (newGraph.outputs || []).map(p => 
+              p.name === oldPortName ? { ...p, name: newPortName } : p
+            )
+          };
+        } else if (oldName.startsWith('@prop/')) {
+          newGraph = {
+            ...newGraph,
+            props: (newGraph.props || []).map(p => 
+              p.name === oldPortName ? { ...p, name: newPortName } : p
+            )
+          };
+        }
+      }
+      
+      // Update selection if the renamed node was selected
+      const newSelection = state.selection.nodeIds.has(oldName)
+        ? {
+            ...state.selection,
+            nodeIds: new Set([...state.selection.nodeIds].map(id => id === oldName ? newName : id))
+          }
+        : state.selection;
+      
+      return { ...state, graph: newGraph, selection: newSelection };
     }
 
     default:
