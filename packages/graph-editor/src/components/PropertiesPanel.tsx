@@ -23,6 +23,11 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   const [internalResult, setInternalResult] = useState<unknown>(undefined);
   const [isEvaluating, setIsEvaluating] = useState(false);
   
+  // Hooks for editable node names - must be called unconditionally
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  
   // Use internal result if we have evaluateFn, otherwise use external result
   const evaluationResult = evaluateFn ? internalResult : externalResult;
 
@@ -32,6 +37,44 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   const selectedNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
   const selectedNode = selectedNodeId ? scopedNodes.find(n => n.name === selectedNodeId) : null;
   const isOutputNode = selectedNode?.type === 'core/graph/output';
+  
+  // Compute boundary node info (safe even when no node selected)
+  const nodeName = selectedNode?.name || '';
+  const isBoundaryNode = BOUNDARY_PREFIXES.some(prefix => nodeName.startsWith(prefix));
+  const boundaryPrefix = BOUNDARY_PREFIXES.find(prefix => nodeName.startsWith(prefix)) || '';
+  const editableNameValue = isBoundaryNode ? nodeName.slice(boundaryPrefix.length) : nodeName;
+  
+  // Sync editedName when selected node changes
+  useEffect(() => {
+    setEditedName(editableNameValue);
+    setIsEditingName(false);
+  }, [editableNameValue]);
+  
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+  
+  // Handlers for name editing
+  const handleNameSubmit = useCallback(() => {
+    if (editedName && editedName !== editableNameValue && nodeName) {
+      const newFullName = isBoundaryNode ? `${boundaryPrefix}${editedName}` : editedName;
+      dispatch({ type: 'RENAME_NODE', oldName: nodeName, newName: newFullName });
+    }
+    setIsEditingName(false);
+  }, [editedName, editableNameValue, isBoundaryNode, boundaryPrefix, nodeName, dispatch]);
+  
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSubmit();
+    } else if (e.key === 'Escape') {
+      setEditedName(editableNameValue);
+      setIsEditingName(false);
+    }
+  }, [handleNameSubmit, editableNameValue]);
   
   // Construct a scoped graph for evaluation (works at any cwd level)
   const scopedGraph = useMemo((): Graph => {
@@ -118,43 +161,6 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
     dispatch({ type: 'SET_NODE_PROP', nodeId, propName, value });
   };
 
-  const isBoundaryNode = BOUNDARY_PREFIXES.some(prefix => node.name.startsWith(prefix));
-  const boundaryPrefix = BOUNDARY_PREFIXES.find(prefix => node.name.startsWith(prefix)) || '';
-  const editableName = isBoundaryNode ? node.name.slice(boundaryPrefix.length) : node.name;
-  
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editedName, setEditedName] = useState(editableName);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  
-  useEffect(() => {
-    setEditedName(editableName);
-    setIsEditingName(false);
-  }, [editableName]);
-  
-  useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus();
-      nameInputRef.current.select();
-    }
-  }, [isEditingName]);
-  
-  const handleNameSubmit = useCallback(() => {
-    if (editedName && editedName !== editableName) {
-      const newFullName = isBoundaryNode ? `${boundaryPrefix}${editedName}` : editedName;
-      dispatch({ type: 'RENAME_NODE', oldName: node.name, newName: newFullName });
-    }
-    setIsEditingName(false);
-  }, [editedName, editableName, isBoundaryNode, boundaryPrefix, node.name, dispatch]);
-  
-  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleNameSubmit();
-    } else if (e.key === 'Escape') {
-      setEditedName(editableName);
-      setIsEditingName(false);
-    }
-  }, [handleNameSubmit, editableName]);
-
   return (
     <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700">
       <div className="p-3 border-b border-slate-700">
@@ -181,7 +187,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
                 className="cursor-pointer hover:bg-slate-700 px-1 py-0.5 rounded"
                 title="Click to edit name"
               >
-                {editableName}
+                {editableNameValue}
               </span>
             )
           ) : (
