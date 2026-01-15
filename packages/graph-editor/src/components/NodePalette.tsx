@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useGraph } from '../context/GraphContext';
 import type { NodeDefinition } from '@fbp/types';
+import { NodeIcon } from './NodeIcon';
 
 const BOUNDARY_NODE_TYPES = ['core/graph/input', 'core/graph/output', 'core/graph/prop'];
 
@@ -36,6 +37,14 @@ export function NodePalette() {
     dispatch({ type: 'ADD_NODE', node: newNode });
   };
 
+  const handleDragStart = useCallback((e: React.DragEvent, definition: NodeDefinition) => {
+    e.dataTransfer.setData('application/fbp-node', JSON.stringify({
+      type: definition.type,
+      isBoundary: BOUNDARY_NODE_TYPES.includes(definition.type)
+    }));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
+
   return (
     <div className="h-full flex flex-col bg-slate-800">
       <div className="px-3 py-2 border-b border-slate-700">
@@ -53,10 +62,13 @@ export function NodePalette() {
                 <button
                   key={def.type}
                   onClick={() => handleAddNode(def)}
-                  className="w-full px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-left text-xs text-slate-300 transition-colors"
-                  title={`Add ${def.type}`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, def)}
+                  className="w-full px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-left text-xs text-slate-300 transition-colors flex items-center gap-2 cursor-grab active:cursor-grabbing"
+                  title={`Drag to add ${def.type}`}
                 >
-                  {def.type.split('/').pop()}
+                  {def.icon && <NodeIcon icon={def.icon} size={14} className="opacity-70" />}
+                  <span>{def.type.split('/').pop()}</span>
                 </button>
               ))}
             </div>

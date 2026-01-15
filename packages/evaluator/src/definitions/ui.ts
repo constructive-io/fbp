@@ -1,4 +1,4 @@
-import type { NodeDefinitionWithImpl } from '../src/types';
+import type { NodeDefinitionWithImpl } from '../types';
 
 /**
  * UI component node definitions with implementations for testing.

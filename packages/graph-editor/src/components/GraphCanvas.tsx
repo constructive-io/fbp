@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { useGraph, useSelection, useNavigation, Point } from '../context/GraphContext';
+import { useGraph, useSelection, useNavigation, useScopedGraph, Point } from '../context/GraphContext';
 import { GraphNode } from './GraphNode';
 import { GraphEdge, TempEdge } from './GraphEdge';
 import { screenToCanvas, clamp } from '../utils/geometry';
@@ -7,11 +7,13 @@ import { screenToCanvas, clamp } from '../utils/geometry';
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2;
 const GRID_SIZE = 20;
+const BOUNDARY_NODE_TYPES = ['core/graph/input', 'core/graph/output', 'core/graph/prop'];
 
 export function GraphCanvas() {
   const { state, dispatch } = useGraph();
-  const { clearSelection, deleteSelection, duplicateSelection, selectAll } = useSelection();
+  const { clearSelection, deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, collapseSelection, layoutSelection } = useSelection();
   const { goUp, canGoUp, diveInto } = useNavigation();
+  const { nodes: scopedNodes, edges: scopedEdges } = useScopedGraph();
   
   const svgRef = useRef<SVGSVGElement>(null);
   const bgRef = useRef<SVGRectElement>(null);
@@ -241,14 +243,79 @@ export function GraphCanvas() {
           }
         }
         break;
+      case 'c':
+      case 'C':
+        if (e.shiftKey && state.selection.nodeIds.size >= 1) {
+          e.preventDefault();
+          collapseSelection();
+        } else if ((e.metaKey || e.ctrlKey) && state.selection.nodeIds.size >= 1) {
+          e.preventDefault();
+          copySelection();
+        }
+        break;
+      case 'v':
+      case 'V':
+        if (e.metaKey || e.ctrlKey) {
+          e.preventDefault();
+          pasteSelection();
+        }
+        break;
+      case 'l':
+      case 'L':
+        if (state.selection.nodeIds.size >= 1) {
+          e.preventDefault();
+          layoutSelection();
+        }
+        break;
     }
-  }, [deleteSelection, duplicateSelection, selectAll, clearSelection, canGoUp, goUp, diveInto, state.selection.nodeIds, state.graph.nodes, state.connecting.active, dispatch]);
+  }, [deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, clearSelection, canGoUp, goUp, diveInto, collapseSelection, layoutSelection, state.selection.nodeIds, state.graph.nodes, state.connecting.active, dispatch]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     if (e.code === 'Space') {
       setIsSpaceHeld(false);
     }
   }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/fbp-node')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('application/fbp-node');
+    if (!data) return;
+
+    try {
+      const { type, isBoundary } = JSON.parse(data);
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const position = screenToCanvas(
+        { x: e.clientX - rect.left, y: e.clientY - rect.top },
+        state.view.pan,
+        state.view.zoom
+      );
+
+      if (isBoundary) {
+        const boundaryType = type === 'core/graph/input' ? 'input' 
+          : type === 'core/graph/output' ? 'output' 
+          : 'prop';
+        dispatch({ type: 'ADD_BOUNDARY_NODE', boundaryType, position });
+      } else {
+        const newNode = {
+          name: `${type.split('/').pop()}_${Date.now().toString(36)}`,
+          type,
+          meta: position
+        };
+        dispatch({ type: 'ADD_NODE', node: newNode });
+      }
+    } catch (err) {
+      console.error('Failed to parse dropped node data:', err);
+    }
+  }, [state.view, dispatch]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -263,7 +330,8 @@ export function GraphCanvas() {
     if (!state.connecting.active || !state.connecting.sourceNode || !state.connecting.sourcePort) {
       return null;
     }
-    const node = state.graph.nodes.find(n => n.name === state.connecting.sourceNode);
+    // Use scoped nodes to find the source node (works in subgraphs)
+    const node = scopedNodes.find(n => n.name === state.connecting.sourceNode);
     if (!node) return null;
     
     const x = node.meta?.x || 0;
@@ -293,6 +361,8 @@ export function GraphCanvas() {
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       style={{ cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default', userSelect: 'none', touchAction: 'none' }}
     >
       <defs>
@@ -310,7 +380,7 @@ export function GraphCanvas() {
       <rect ref={bgRef} width="100%" height="100%" fill="url(#grid)" />
 
       <g transform={`translate(${state.view.pan.x}, ${state.view.pan.y}) scale(${state.view.zoom})`}>
-        {state.graph.edges.map((edge, i) => (
+        {scopedEdges.map((edge, i) => (
           <GraphEdge key={`${edge.src.node}:${edge.src.port}->${edge.dst.node}:${edge.dst.port}`} edge={edge} />
         ))}
 
@@ -318,7 +388,7 @@ export function GraphCanvas() {
           <TempEdge start={connectingStartPos} end={connectingEnd} />
         )}
 
-        {state.graph.nodes.map(node => (
+        {scopedNodes.map(node => (
           <GraphNode
             key={node.name}
             node={node}
@@ -341,11 +411,11 @@ export function GraphCanvas() {
         )}
       </g>
 
-      {state.navigationStack.length > 0 && (
+      {state.cwd !== '/' && (
         <g>
           <rect x={10} y={10} width={200} height={30} rx={4} fill="rgba(30, 41, 59, 0.9)" />
           <text x={20} y={30} fill="#94a3b8" fontSize={12} fontFamily="system-ui, sans-serif">
-            {state.navigationStack.join(' / ')}
+            {state.cwd}
           </text>
           <text x={180} y={30} fill="#64748b" fontSize={10} fontFamily="system-ui, sans-serif">
             U to go up

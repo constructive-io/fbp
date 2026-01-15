@@ -1,7 +1,10 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { useGraph, useSelection } from '../context/GraphContext';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
+import { useGraph, useSelection, useScopedGraph } from '../context/GraphContext';
 import type { PropDefinition, Prop, Graph } from '@fbp/types';
 import { clsx } from 'clsx';
+import { CodeEditor } from './CodeEditor';
+
+const BOUNDARY_PREFIXES = ['@in/', '@out/', '@prop/'];
 
 // Type for evaluate function passed from parent
 type EvaluateFn = (graph: Graph, options: { definitions: any[]; outputNode: string; outputPort: string }) => Promise<any>;
@@ -16,18 +19,76 @@ interface PropertiesPanelProps {
 export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEvaluation, evaluateFn, definitions }: PropertiesPanelProps) {
   const { state, dispatch, getDefinition, getShortName, isChannelReference } = useGraph();
   const { selection } = useSelection();
+  const { nodes: scopedNodes, edges: scopedEdges } = useScopedGraph();
   const [internalResult, setInternalResult] = useState<unknown>(undefined);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
+  
+  // Hooks for editable node names - must be called unconditionally
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
   
   // Use internal result if we have evaluateFn, otherwise use external result
   const evaluationResult = evaluateFn ? internalResult : externalResult;
 
   const selectedNodeIds = Array.from(selection.nodeIds);
   
-  // Get the selected node for evaluation
+  // Get the selected node for evaluation (use scoped nodes for current scope level)
   const selectedNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
-  const selectedNode = selectedNodeId ? state.graph.nodes.find(n => n.name === selectedNodeId) : null;
+  const selectedNode = selectedNodeId ? scopedNodes.find(n => n.name === selectedNodeId) : null;
   const isOutputNode = selectedNode?.type === 'core/graph/output';
+  
+  // Compute boundary node info (safe even when no node selected)
+  const nodeName = selectedNode?.name || '';
+  const isBoundaryNode = BOUNDARY_PREFIXES.some(prefix => nodeName.startsWith(prefix));
+  const boundaryPrefix = BOUNDARY_PREFIXES.find(prefix => nodeName.startsWith(prefix)) || '';
+  const editableNameValue = isBoundaryNode ? nodeName.slice(boundaryPrefix.length) : nodeName;
+  
+  // Sync editedName when selected node changes
+  useEffect(() => {
+    setEditedName(editableNameValue);
+    setIsEditingName(false);
+  }, [editableNameValue]);
+  
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+  
+  // Handlers for name editing
+  const handleNameSubmit = useCallback(() => {
+    if (editedName && editedName !== editableNameValue && nodeName) {
+      const newFullName = isBoundaryNode ? `${boundaryPrefix}${editedName}` : editedName;
+      dispatch({ type: 'RENAME_NODE', oldName: nodeName, newName: newFullName });
+    }
+    setIsEditingName(false);
+  }, [editedName, editableNameValue, isBoundaryNode, boundaryPrefix, nodeName, dispatch]);
+  
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSubmit();
+    } else if (e.key === 'Escape') {
+      setEditedName(editableNameValue);
+      setIsEditingName(false);
+    }
+  }, [handleNameSubmit, editableNameValue]);
+  
+  // Construct a scoped graph for evaluation (works at any cwd level)
+  const scopedGraph = useMemo((): Graph => {
+    return {
+      name: state.cwd === '/' ? state.graph.name : `scope:${state.cwd}`,
+      nodes: scopedNodes,
+      edges: scopedEdges,
+      inputs: state.graph.inputs,
+      outputs: state.graph.outputs,
+      props: state.graph.props,
+      definitions: state.graph.definitions
+    };
+  }, [state.cwd, state.graph.name, state.graph.inputs, state.graph.outputs, state.graph.props, state.graph.definitions, scopedNodes, scopedEdges]);
   
   // Evaluate when output node is selected and we have evaluateFn
   const handleEvaluate = useCallback(async () => {
@@ -35,7 +96,8 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
     
     setIsEvaluating(true);
     try {
-      const result = await evaluateFn(state.graph as Graph, {
+      // Use scopedGraph instead of state.graph for evaluation at current cwd level
+      const result = await evaluateFn(scopedGraph, {
         definitions,
         outputNode: selectedNodeId,
         outputPort: 'value'
@@ -47,7 +109,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
     } finally {
       setIsEvaluating(false);
     }
-  }, [evaluateFn, definitions, selectedNodeId, isOutputNode, state.graph]);
+  }, [evaluateFn, definitions, selectedNodeId, isOutputNode, scopedGraph]);
   
   // Auto-evaluate when output node is selected
   useEffect(() => {
@@ -59,11 +121,25 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   }, [selectedNodeId, isOutputNode, evaluateFn, definitions]);
   
   // Handle refresh - use internal evaluation if available, otherwise external
+  // Always spin for a minimum duration so user gets visual feedback even on fast evaluations
   const handleRefresh = useCallback(() => {
+    setIsSpinning(true);
+    const minSpinTime = 400; // minimum spin duration in ms
+    const spinStart = Date.now();
+
+    const stopSpinning = () => {
+      const elapsed = Date.now() - spinStart;
+      const remaining = Math.max(0, minSpinTime - elapsed);
+      setTimeout(() => setIsSpinning(false), remaining);
+    };
+
     if (evaluateFn && definitions) {
-      handleEvaluate();
+      handleEvaluate().finally(stopSpinning);
     } else if (onRefreshEvaluation) {
       onRefreshEvaluation();
+      stopSpinning();
+    } else {
+      stopSpinning();
     }
   }, [evaluateFn, definitions, handleEvaluate, onRefreshEvaluation]);
   
@@ -84,7 +160,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   }
 
   const nodeId = selectedNodeIds[0];
-  const node = state.graph.nodes.find(n => n.name === nodeId);
+  const node = scopedNodes.find(n => n.name === nodeId);
   
   if (!node) return null;
 
@@ -104,7 +180,35 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
     <div className="flex flex-col h-full bg-slate-900 border-l border-slate-700">
       <div className="p-3 border-b border-slate-700">
         <div className="text-xs text-slate-500 mb-1">Node</div>
-        <div className="font-semibold text-white">{node.name}</div>
+        <div className="font-semibold text-white flex items-center gap-1">
+          {isBoundaryNode && (
+            <span className="text-slate-500">{boundaryPrefix}</span>
+          )}
+          {isBoundaryNode ? (
+            isEditingName ? (
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={handleNameSubmit}
+                onKeyDown={handleNameKeyDown}
+                className="bg-slate-800 border border-blue-500 rounded px-1 py-0.5 text-white text-sm focus:outline-none"
+                style={{ width: `${Math.max(editedName.length, 5) * 8 + 16}px` }}
+              />
+            ) : (
+              <span 
+                onClick={() => setIsEditingName(true)}
+                className="cursor-pointer hover:bg-slate-700 px-1 py-0.5 rounded"
+                title="Click to edit name"
+              >
+                {editableNameValue}
+              </span>
+            )
+          ) : (
+            <span>{node.name}</span>
+          )}
+        </div>
         <div className="text-xs text-slate-400 mt-1 font-mono">{node.type}</div>
       </div>
 
@@ -122,6 +226,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
                 value={getPropValue(propDef.name)}
                 onChange={(value) => handlePropChange(propDef.name, value)}
                 isChannelRef={isChannelReference(getPropValue(propDef.name))}
+                nodeType={node.type}
               />
             ))}
           </div>
@@ -133,26 +238,26 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
               <span className="text-xs text-slate-500 uppercase tracking-wider">Evaluated Result</span>
               <button
                 onClick={handleRefresh}
-                disabled={isEvaluating}
+                disabled={isSpinning}
                 className={clsx(
                   "p-1.5 rounded transition-colors",
-                  isEvaluating 
-                    ? "text-slate-600 cursor-not-allowed" 
+                  isSpinning
+                    ? "text-blue-400"
                     : "hover:bg-slate-700 text-slate-400 hover:text-slate-200"
                 )}
                 title="Re-evaluate graph"
               >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="14" 
-                  height="14" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
-                  className={isEvaluating ? "animate-spin" : ""}
+                  className={isSpinning ? "animate-spin" : ""}
                 >
                   <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                   <path d="M3 3v5h5" />
@@ -188,10 +293,15 @@ interface PropertyFieldProps {
   value: unknown;
   onChange: (value: unknown) => void;
   isChannelRef: boolean;
+  nodeType?: string;
 }
 
-function PropertyField({ definition, value, onChange, isChannelRef }: PropertyFieldProps) {
+function PropertyField({ definition, value, onChange, isChannelRef, nodeType }: PropertyFieldProps) {
   const displayValue = value ?? definition.default ?? '';
+  
+  // Check if this property should use a code editor (e.g., GraphQL document field)
+  const isGraphQLDocument = nodeType === 'net/graphql/request' && definition.name === 'document';
+  const isCodeField = isGraphQLDocument;
 
   const renderInput = () => {
     switch (definition.type.toLowerCase()) {
@@ -243,6 +353,18 @@ function PropertyField({ definition, value, onChange, isChannelRef }: PropertyFi
         );
 
       default:
+        // Use CodeEditor for GraphQL document and other code fields
+        if (isCodeField) {
+          return (
+            <CodeEditor
+              value={displayValue as string}
+              onChange={onChange}
+              language={isGraphQLDocument ? 'graphql' : 'javascript'}
+              placeholder={isGraphQLDocument ? 'query { ... }' : ''}
+            />
+          );
+        }
+        
         return (
           <input
             type="text"
