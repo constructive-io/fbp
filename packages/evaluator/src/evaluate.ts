@@ -75,6 +75,54 @@ export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<
       return result;
     }
 
+    // Handle subnet nodes (kind: 'subnet')
+    if (node.kind === 'subnet' && node.nodes && node.edges) {
+      // Collect inputs for the subnet by evaluating upstream nodes
+      const subnetInputs: Record<string, any> = {};
+      const subnetPortEdges = edgesByDst.get(nodeName);
+      
+      if (node.inputs && subnetPortEdges) {
+        for (const inputPort of node.inputs) {
+          const edges = subnetPortEdges.get(inputPort.name) ?? [];
+          if (edges.length > 0) {
+            const edge = edges[0];
+            const upstreamOutputs = await evaluateNode(edge.src.node);
+            subnetInputs[inputPort.name] = upstreamOutputs[edge.src.port];
+          }
+        }
+      }
+      
+      // Find the output boundary nodes in the subnet
+      const subnetOutputs: Record<string, any> = {};
+      
+      if (node.outputs) {
+        for (const outputPort of node.outputs) {
+          // The output boundary node name is @out/<portName>
+          const outputNodeName = `@out/${outputPort.name}`;
+          
+          // Recursively evaluate the subnet's internal graph
+          const subnetResult = await evaluate(
+            {
+              name: `${nodeName}_subnet`,
+              nodes: node.nodes,
+              edges: node.edges
+            },
+            {
+              definitions,
+              outputNode: outputNodeName,
+              outputPort: 'value',
+              inputs: subnetInputs
+            }
+          );
+          
+          subnetOutputs[outputPort.name] = subnetResult;
+        }
+      }
+      
+      cache.set(nodeName, subnetOutputs);
+      return subnetOutputs;
+    }
+
     // Get the definition for this node type
     const definition = defMap.get(node.type);
     if (!definition) {

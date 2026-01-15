@@ -5,6 +5,32 @@ import type { NodeDefinitionWithImpl } from '../src/types';
  * These produce vdom JSON structures.
  */
 
+// Boundary node definitions for graph inputs/outputs
+export const graphInputDef: NodeDefinitionWithImpl = {
+  context: 'core',
+  category: 'graph',
+  type: 'core/graph/input',
+  inputs: [],
+  outputs: [{ name: 'value', type: 'any' }],
+  props: [
+    { name: 'value', type: 'any' },
+    { name: 'default', type: 'any' }
+  ],
+  description: 'Graph input boundary node',
+  impl: (_inputs, props) => ({ value: props?.value ?? props?.default })
+};
+
+export const graphOutputDef: NodeDefinitionWithImpl = {
+  context: 'core',
+  category: 'graph',
+  type: 'core/graph/output',
+  inputs: [{ name: 'value', type: 'any' }],
+  outputs: [{ name: 'value', type: 'any' }],
+  props: [],
+  description: 'Graph output boundary node',
+  impl: (inputs) => ({ value: inputs.value })
+};
+
 export const pageDef: NodeDefinitionWithImpl = {
   context: 'ui',
   category: 'layout',
@@ -101,9 +127,34 @@ export const buttonDef: NodeDefinitionWithImpl = {
   })
 };
 
+export const textDef: NodeDefinitionWithImpl = {
+  context: 'ui',
+  category: 'content',
+  type: 'ui/content/Text',
+  inputs: [],
+  outputs: [{ name: 'element', type: 'Element' }],
+  props: [
+    { name: 'key', type: 'string', required: true },
+    { name: 'content', type: 'string', required: true }
+  ],
+  description: 'A text content component',
+  impl: (_inputs, props) => ({
+    element: {
+      type: 'Text',
+      key: props.key,
+      props: {
+        content: props.content
+      }
+    }
+  })
+};
+
 export const uiDefinitions: NodeDefinitionWithImpl[] = [
   pageDef,
   formDef,
   inputDef,
-  buttonDef
+  buttonDef,
+  textDef,
+  graphInputDef,
+  graphOutputDef
 ];

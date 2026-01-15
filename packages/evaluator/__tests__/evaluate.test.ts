@@ -1,7 +1,7 @@
 import type { Graph } from '@fbp/types';
 import { evaluate } from '../src/evaluate';
 import { mathDefinitions, constNumberDef, addDef, multiplyDef } from '../__fixtures__/math-definitions';
-import { uiDefinitions, pageDef, formDef, inputDef, buttonDef } from '../__fixtures__/ui-definitions';
+import { uiDefinitions, pageDef, formDef, inputDef, buttonDef, textDef } from '../__fixtures__/ui-definitions';
 
 describe('evaluate', () => {
   describe('math operations', () => {
@@ -311,6 +311,286 @@ describe('evaluate', () => {
                 type: 'Button',
                 key: 'submit',
                 props: { type: 'submit', text: 'Subscribe' }
+              }
+            ]
+          }
+        ]
+      });
+    });
+  });
+
+  describe('subnet evaluation', () => {
+    // Expected vdom output for both flat and subnet graphs
+    const expectedVdom = {
+      type: 'Page',
+      key: 'home',
+      props: { className: 'container' },
+      children: [
+        {
+          type: 'Text',
+          key: 'header',
+          props: { content: 'Welcome' }
+        },
+        {
+          type: 'Form',
+          key: 'signupForm',
+          props: { className: 'flex gap-4' },
+          children: [
+            {
+              type: 'Input',
+              key: 'email',
+              props: { name: 'email', type: 'email', placeholder: 'Email' }
+            },
+            {
+              type: 'Button',
+              key: 'submit',
+              props: { type: 'submit', text: 'Sign Up' }
+            }
+          ]
+        }
+      ]
+    };
+
+    it('should produce vdom from a flat graph', async () => {
+      // Graph A: Flat graph with all nodes at the same level
+      const flatGraph: Graph = {
+        name: 'flat-page',
+        nodes: [
+          { 
+            name: 'page', 
+            type: 'ui/layout/Page', 
+            props: [
+              { name: 'key', type: 'string', value: 'home' },
+              { name: 'className', type: 'string', value: 'container' }
+            ] 
+          },
+          { 
+            name: 'header', 
+            type: 'ui/content/Text', 
+            props: [
+              { name: 'key', type: 'string', value: 'header' },
+              { name: 'content', type: 'string', value: 'Welcome' }
+            ] 
+          },
+          { 
+            name: 'form', 
+            type: 'ui/form/Form', 
+            props: [
+              { name: 'key', type: 'string', value: 'signupForm' },
+              { name: 'className', type: 'string', value: 'flex gap-4' }
+            ] 
+          },
+          { 
+            name: 'emailInput', 
+            type: 'ui/form/Input', 
+            props: [
+              { name: 'key', type: 'string', value: 'email' },
+              { name: 'name', type: 'string', value: 'email' },
+              { name: 'type', type: 'string', value: 'email' },
+              { name: 'placeholder', type: 'string', value: 'Email' }
+            ] 
+          },
+          { 
+            name: 'submitButton', 
+            type: 'ui/form/Button', 
+            props: [
+              { name: 'key', type: 'string', value: 'submit' },
+              { name: 'type', type: 'string', value: 'submit' },
+              { name: 'text', type: 'string', value: 'Sign Up' }
+            ] 
+          }
+        ],
+        edges: [
+          // Children order: header first, then form
+          { src: { node: 'header', port: 'element' }, dst: { node: 'page', port: 'children' } },
+          { src: { node: 'form', port: 'element' }, dst: { node: 'page', port: 'children' } },
+          // Form children: emailInput first, then submitButton
+          { src: { node: 'emailInput', port: 'element' }, dst: { node: 'form', port: 'children' } },
+          { src: { node: 'submitButton', port: 'element' }, dst: { node: 'form', port: 'children' } }
+        ]
+      };
+
+      const result = await evaluate(flatGraph, {
+        definitions: uiDefinitions,
+        outputNode: 'page',
+        outputPort: 'element'
+      });
+
+      expect(result).toEqual(expectedVdom);
+    });
+
+    it('should produce identical vdom from a graph with subnet', async () => {
+      // Graph B: Page uses a subnet that contains Form + Input + Button
+      // The subnet encapsulates the form section
+      const graphWithSubnet: Graph = {
+        name: 'page-with-subnet',
+        nodes: [
+          { 
+            name: 'page', 
+            type: 'ui/layout/Page', 
+            props: [
+              { name: 'key', type: 'string', value: 'home' },
+              { name: 'className', type: 'string', value: 'container' }
+            ] 
+          },
+          { 
+            name: 'header', 
+            type: 'ui/content/Text', 
+            props: [
+              { name: 'key', type: 'string', value: 'header' },
+              { name: 'content', type: 'string', value: 'Welcome' }
+            ] 
+          },
+          // Subnet node containing the form section
+          { 
+            name: 'formSection', 
+            type: 'subnet',
+            kind: 'subnet',
+            inputs: [],
+            outputs: [{ name: 'element', type: 'Element' }],
+            nodes: [
+              { 
+                name: 'form', 
+                type: 'ui/form/Form', 
+                props: [
+                  { name: 'key', type: 'string', value: 'signupForm' },
+                  { name: 'className', type: 'string', value: 'flex gap-4' }
+                ] 
+              },
+              { 
+                name: 'emailInput', 
+                type: 'ui/form/Input', 
+                props: [
+                  { name: 'key', type: 'string', value: 'email' },
+                  { name: 'name', type: 'string', value: 'email' },
+                  { name: 'type', type: 'string', value: 'email' },
+                  { name: 'placeholder', type: 'string', value: 'Email' }
+                ] 
+              },
+              { 
+                name: 'submitButton', 
+                type: 'ui/form/Button', 
+                props: [
+                  { name: 'key', type: 'string', value: 'submit' },
+                  { name: 'type', type: 'string', value: 'submit' },
+                  { name: 'text', type: 'string', value: 'Sign Up' }
+                ] 
+              },
+              // Output boundary node - connects form output to subnet output
+              { 
+                name: '@out/element', 
+                type: 'core/graph/output',
+                kind: 'graphOutput'
+              }
+            ],
+            edges: [
+              { src: { node: 'emailInput', port: 'element' }, dst: { node: 'form', port: 'children' } },
+              { src: { node: 'submitButton', port: 'element' }, dst: { node: 'form', port: 'children' } },
+              { src: { node: 'form', port: 'element' }, dst: { node: '@out/element', port: 'value' } }
+            ]
+          }
+        ],
+        edges: [
+          // Children order: header first, then formSection subnet
+          { src: { node: 'header', port: 'element' }, dst: { node: 'page', port: 'children' } },
+          { src: { node: 'formSection', port: 'element' }, dst: { node: 'page', port: 'children' } }
+        ]
+      };
+
+      const result = await evaluate(graphWithSubnet, {
+        definitions: uiDefinitions,
+        outputNode: 'page',
+        outputPort: 'element'
+      });
+
+      // Should produce identical vdom to the flat graph
+      expect(result).toEqual(expectedVdom);
+    });
+
+    it('should handle subnet with inputs', async () => {
+      // Graph with a subnet that takes an input
+      const graphWithSubnetInput: Graph = {
+        name: 'subnet-with-input',
+        nodes: [
+          { 
+            name: 'page', 
+            type: 'ui/layout/Page', 
+            props: [
+              { name: 'key', type: 'string', value: 'home' },
+              { name: 'className', type: 'string', value: '' }
+            ] 
+          },
+          { 
+            name: 'welcomeText', 
+            type: 'ui/content/Text', 
+            props: [
+              { name: 'key', type: 'string', value: 'welcome' },
+              { name: 'content', type: 'string', value: 'Hello World' }
+            ] 
+          },
+          // Subnet that wraps content in a form
+          { 
+            name: 'formWrapper', 
+            type: 'subnet',
+            kind: 'subnet',
+            inputs: [{ name: 'content', type: 'Element' }],
+            outputs: [{ name: 'element', type: 'Element' }],
+            nodes: [
+              // Input boundary node
+              { 
+                name: '@in/content', 
+                type: 'core/graph/input',
+                kind: 'graphInput'
+              },
+              { 
+                name: 'form', 
+                type: 'ui/form/Form', 
+                props: [
+                  { name: 'key', type: 'string', value: 'wrapper' },
+                  { name: 'className', type: 'string', value: 'form-wrapper' }
+                ] 
+              },
+              // Output boundary node
+              { 
+                name: '@out/element', 
+                type: 'core/graph/output',
+                kind: 'graphOutput'
+              }
+            ],
+            edges: [
+              { src: { node: '@in/content', port: 'value' }, dst: { node: 'form', port: 'children' } },
+              { src: { node: 'form', port: 'element' }, dst: { node: '@out/element', port: 'value' } }
+            ]
+          }
+        ],
+        edges: [
+          // Pass welcomeText into the subnet's content input
+          { src: { node: 'welcomeText', port: 'element' }, dst: { node: 'formWrapper', port: 'content' } },
+          // Connect subnet output to page children
+          { src: { node: 'formWrapper', port: 'element' }, dst: { node: 'page', port: 'children' } }
+        ]
+      };
+
+      const result = await evaluate(graphWithSubnetInput, {
+        definitions: uiDefinitions,
+        outputNode: 'page',
+        outputPort: 'element'
+      });
+
+      expect(result).toEqual({
+        type: 'Page',
+        key: 'home',
+        props: { className: '' },
+        children: [
+          {
+            type: 'Form',
+            key: 'wrapper',
+            props: { className: 'form-wrapper' },
+            children: [
+              {
+                type: 'Text',
+                key: 'welcome',
+                props: { content: 'Hello World' }
               }
             ]
           }
