@@ -17,6 +17,7 @@
   "dependencies": {
     "@emotion/react": "11.10.6",
     "@emotion/styled": "11.10.6",
+    "@fbp/evaluator": "workspace:*",
     "@fbp/graph-editor": "workspace:*",
     "@fbp/types": "workspace:*",
     "@interchain-ui/react": "^1.21.16",

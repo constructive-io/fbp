@@ -16,12 +16,17 @@
 
     "Port": {
       "type": "object",
-      "description": "A named, typed port in a node signature. No lanes. Fan-in requires explicit Merge/Collect nodes (or a collection type if you later add that convention).",
+      "description": "A named, typed port in a node signature. Multi-input ports accept multiple incoming edges with values collected in edge array order.",
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "type": { "type": "string", "minLength": 1 },
         "description": { "type": "string" },
-        "optional": { "type": "boolean", "default": false }
+        "optional": { "type": "boolean", "default": false },
+        "multi": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, this port accepts multiple incoming edges. Values are collected into an array in edge array order."
+        }
       },
       "required": ["name", "type"],
       "additionalProperties": false
@@ -226,7 +231,7 @@
 
     "Graph": {
       "type": "object",
-      "description": "Top-level graph container with optional inline definitions and node instances.",
+      "description": "Top-level graph container with optional inline definitions and node instances. Like subnets, graphs can declare inputs/outputs/props for their external interface.",
       "properties": {
         "name": {
           "type": "string",
@@ -238,6 +243,24 @@
           "items": { "$ref": "#/definitions/NodeDefinition" },
           "default": [],
           "description": "Inline node type definitions. Definitions can also be provided externally to an evaluator."
+        },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Port" },
+          "default": [],
+          "description": "External input interface for the graph. Drives generation of GraphInput boundary nodes (@in/<portName>)."
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Port" },
+          "default": [],
+          "description": "External output interface for the graph. Drives generation of GraphOutput boundary nodes (@out/<portName>)."
+        },
+        "props": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PropDefinition" },
+          "default": [],
+          "description": "Configuration parameters for the graph. Drives generation of GraphProp boundary nodes (@prop/<paramName>)."
         },
         "nodes": {
           "type": "array",
@@ -272,7 +295,7 @@
     "Channels: Edge.channel is optional. If omitted, it is treated as 'main'. Only serialize when non-main.",
     "Subnets: Any Node with child nodes/edges is a subnet. Its public interface is defined by its inputs/outputs/props fields.",
     "Boundary adapters (UI): For any subnet, GraphInput, GraphOutput, and GraphProp nodes are generated deterministically from the subnet's declared inputs/outputs/props (Strategy 1). They are special node kinds and not treated as normal nodes.",
-    "Deterministic generation: Generated boundary node names and ordering must be stable (e.g., '__in/<portName>', '__out/<portName>', '__prop/<paramName>', sorted by name) to support canonicalization/merkle hashing.",
+    "Deterministic generation: Generated boundary node names and ordering must be stable (e.g., '@in/<portName>', '@out/<portName>', '@prop/<paramName>', sorted by name) to support canonicalization/merkle hashing.",
     "Validation: Edges must connect src.port that exists in src node outputs to dst.port that exists in dst node inputs (or that exists in the node type registry signature for that node's (context, type) if you choose registry-derived ports).",
     "Canonicalization: Consider sorting inputs/outputs/props arrays by name and excluding UI-only metadata fields from hashing to keep content-addressable IDs stable across layout changes."
   ]

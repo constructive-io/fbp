@@ -9,6 +9,7 @@ export interface Port {
   type: string;
   description?: string;
   optional?: boolean;
+  multi?: boolean;
 }
 export interface Ref {
   ref: string;
@@ -66,6 +67,9 @@ export interface Node {
 export interface Graph {
   name: string;
   definitions?: NodeDefinition[];
+  inputs?: Port[];
+  outputs?: Port[];
+  props?: PropDefinition[];
   nodes: Node[];
   edges: Edge[];
   groups?: Group[];

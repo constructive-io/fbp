@@ -1,0 +1,43 @@
+{
+  "name": "@fbp/evaluator",
+  "version": "0.1.0",
+  "author": "Dan Lynch <pyramation@gmail.com>",
+  "description": "Lazy graph evaluator for Flow-Based Programming",
+  "main": "index.js",
+  "module": "esm/index.js",
+  "types": "index.d.ts",
+  "homepage": "https://github.com/constructive-io/fbp",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/constructive-io/fbp"
+  },
+  "bugs": {
+    "url": "https://github.com/constructive-io/fbp/issues"
+  },
+  "scripts": {
+    "clean": "makage clean",
+    "prepack": "npm run build",
+    "build": "makage build",
+    "build:dev": "makage build --dev",
+    "lint": "eslint . --fix",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "fbp",
+    "evaluator",
+    "flow-based-programming",
+    "lazy-evaluation"
+  ],
+  "dependencies": {
+    "@fbp/types": "workspace:*"
+  },
+  "devDependencies": {
+    "makage": "0.1.9"
+  }
+}

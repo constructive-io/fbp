@@ -37,10 +37,13 @@ export interface GraphEditorState {
   };
 }
 
+type BoundaryNodeType = 'input' | 'output' | 'prop';
+
 type GraphAction =
   | { type: 'SET_GRAPH'; graph: Graph }
   | { type: 'SET_DEFINITIONS'; definitions: NodeDefinition[] }
   | { type: 'ADD_NODE'; node: Node }
+  | { type: 'ADD_BOUNDARY_NODE'; boundaryType: BoundaryNodeType; position: Point }
   | { type: 'UPDATE_NODE'; nodeId: string; updates: Partial<Node> }
   | { type: 'DELETE_NODES'; nodeIds: string[] }
   | { type: 'ADD_EDGE'; edge: Edge }
@@ -126,6 +129,56 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
       return { ...state, graph: { ...state.graph, nodes } };
     }
 
+    case 'ADD_BOUNDARY_NODE': {
+      const { boundaryType, position } = action;
+      const prefix = boundaryType === 'input' ? '@in/' : boundaryType === 'output' ? '@out/' : '@prop/';
+      const baseName = boundaryType;
+      const nodeType = `core/graph/${boundaryType}`;
+      const kind = boundaryType === 'input' ? 'graphInput' : boundaryType === 'output' ? 'graphOutput' : 'graphProp';
+      
+      // Count existing boundary nodes of this type to generate next number
+      const existingNodes = state.graph.nodes.filter(n => n.name.startsWith(prefix + baseName));
+      const existingNumbers = existingNodes.map(n => {
+        const match = n.name.match(new RegExp(`^${prefix}${baseName}(\\d+)$`));
+        return match ? parseInt(match[1], 10) : 0;
+      });
+      const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+      const portName = `${baseName}${nextNumber}`;
+      const nodeName = `${prefix}${portName}`;
+      
+      const newNode: Node = {
+        name: nodeName,
+        type: nodeType,
+        kind: kind as 'graphInput' | 'graphOutput' | 'graphProp',
+        meta: { x: position.x, y: position.y }
+      };
+      
+      // Update graph interface arrays
+      const newPort = { name: portName, type: 'any' };
+      let inputs = state.graph.inputs || [];
+      let outputs = state.graph.outputs || [];
+      let props = state.graph.props || [];
+      
+      if (boundaryType === 'input') {
+        inputs = [...inputs, newPort];
+      } else if (boundaryType === 'output') {
+        outputs = [...outputs, newPort];
+      } else {
+        props = [...props, { name: portName, type: 'any', default: undefined }];
+      }
+      
+      return {
+        ...state,
+        graph: {
+          ...state.graph,
+          nodes: [...state.graph.nodes, newNode],
+          inputs,
+          outputs,
+          props
+        }
+      };
+    }
+
     case 'UPDATE_NODE': {
       const updateNodeInList = (nodes: Node[]): Node[] =>
         nodes.map(n => n.name === action.nodeId ? { ...n, ...action.updates } : n);
@@ -138,9 +191,32 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
       const edges = state.graph.edges.filter(
         e => !nodeIdSet.has(e.src.node) && !nodeIdSet.has(e.dst.node)
       );
+      
+      // Remove boundary node entries from graph.inputs/outputs/props
+      const deletedNodes = state.graph.nodes.filter(n => nodeIdSet.has(n.name));
+      const deletedInputNames = new Set(
+        deletedNodes
+          .filter(n => n.name.startsWith('@in/'))
+          .map(n => n.name.replace('@in/', ''))
+      );
+      const deletedOutputNames = new Set(
+        deletedNodes
+          .filter(n => n.name.startsWith('@out/'))
+          .map(n => n.name.replace('@out/', ''))
+      );
+      const deletedPropNames = new Set(
+        deletedNodes
+          .filter(n => n.name.startsWith('@prop/'))
+          .map(n => n.name.replace('@prop/', ''))
+      );
+      
+      const inputs = (state.graph.inputs || []).filter(p => !deletedInputNames.has(p.name));
+      const outputs = (state.graph.outputs || []).filter(p => !deletedOutputNames.has(p.name));
+      const props = (state.graph.props || []).filter(p => !deletedPropNames.has(p.name));
+      
       return {
         ...state,
-        graph: { ...state.graph, nodes, edges },
+        graph: { ...state.graph, nodes, edges, inputs, outputs, props },
         selection: { nodeIds: new Set(), edgeIds: new Set() }
       };
     }
@@ -402,10 +478,11 @@ interface GraphContextValue {
 
 const GraphContext = createContext<GraphContextValue | null>(null);
 
-export function GraphProvider({ children, initialGraph, externalDefinitions }: {
+export function GraphProvider({ children, initialGraph, externalDefinitions, onSelectionChange }: {
   children: ReactNode;
   initialGraph?: Graph;
   externalDefinitions?: NodeDefinition[];
+  onSelectionChange?: (selectedNodeIds: string[]) => void;
 }) {
   const [state, dispatch] = useReducer(graphReducer, {
     ...initialState,
@@ -415,6 +492,13 @@ export function GraphProvider({ children, initialGraph, externalDefinitions }: {
       ...(externalDefinitions || []).map(d => [d.type, d] as [string, NodeDefinition])
     ])
   });
+
+  // Call onSelectionChange when selection changes
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(Array.from(state.selection.nodeIds));
+    }
+  }, [state.selection.nodeIds, onSelectionChange]);
 
   const getDefinition = useCallback((type: string) => state.definitions.get(type), [state.definitions]);
   

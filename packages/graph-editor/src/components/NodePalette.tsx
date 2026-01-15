@@ -2,6 +2,8 @@ import React from 'react';
 import { useGraph } from '../context/GraphContext';
 import type { NodeDefinition } from '@fbp/types';
 
+const BOUNDARY_NODE_TYPES = ['core/graph/input', 'core/graph/output', 'core/graph/prop'];
+
 export function NodePalette() {
   const { state, dispatch } = useGraph();
   
@@ -15,10 +17,21 @@ export function NodePalette() {
   }, {} as Record<string, NodeDefinition[]>);
 
   const handleAddNode = (definition: NodeDefinition) => {
+    const position = { x: 200 + Math.random() * 100, y: 200 + Math.random() * 100 };
+    
+    // Handle boundary nodes specially
+    if (BOUNDARY_NODE_TYPES.includes(definition.type)) {
+      const boundaryType = definition.type === 'core/graph/input' ? 'input' 
+        : definition.type === 'core/graph/output' ? 'output' 
+        : 'prop';
+      dispatch({ type: 'ADD_BOUNDARY_NODE', boundaryType, position });
+      return;
+    }
+    
     const newNode = {
       name: `${definition.type.split('/').pop()}_${Date.now().toString(36)}`,
       type: definition.type,
-      meta: { x: 200 + Math.random() * 100, y: 200 + Math.random() * 100 }
+      meta: position
     };
     dispatch({ type: 'ADD_NODE', node: newNode });
   };
