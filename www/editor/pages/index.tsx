@@ -336,6 +336,43 @@ const examples: Record<string, Graph> = {
       { src: { node: 'form', port: 'element' }, dst: { node: 'page', port: 'children' } },
       { src: { node: 'page', port: 'element' }, dst: { node: '@out/result', port: 'value' } }
     ]
+  },
+  'Subgraph Example (Math in Subnet)': {
+    name: 'subgraph-math',
+    definitions: mathDefinitions,
+    nodes: [
+      { name: 'input1', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 10 }], meta: { x: 100, y: 150 } },
+      { name: 'input2', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 350 } },
+      { 
+        name: 'mathSubnet', 
+        type: 'subnet',
+        kind: 'subnet',
+        inputs: [{ name: 'a', type: 'number' }, { name: 'b', type: 'number' }],
+        outputs: [{ name: 'result', type: 'number' }],
+        meta: { x: 350, y: 200 },
+        nodes: [
+          { name: '@in/a', type: 'core/graph/input', kind: 'graphInput', meta: { x: 50, y: 100 } },
+          { name: '@in/b', type: 'core/graph/input', kind: 'graphInput', meta: { x: 50, y: 250 } },
+          { name: 'add', type: 'js/math/add', meta: { x: 250, y: 150 } },
+          { name: 'double', type: 'js/math/multiply', meta: { x: 450, y: 150 } },
+          { name: 'two', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 2 }], meta: { x: 250, y: 300 } },
+          { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 650, y: 150 } }
+        ],
+        edges: [
+          { src: { node: '@in/a', port: 'value' }, dst: { node: 'add', port: 'a' } },
+          { src: { node: '@in/b', port: 'value' }, dst: { node: 'add', port: 'b' } },
+          { src: { node: 'add', port: 'sum' }, dst: { node: 'double', port: 'a' } },
+          { src: { node: 'two', port: 'value' }, dst: { node: 'double', port: 'b' } },
+          { src: { node: 'double', port: 'product' }, dst: { node: '@out/result', port: 'value' } }
+        ]
+      },
+      { name: '@out/result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 600, y: 200 } }
+    ],
+    edges: [
+      { src: { node: 'input1', port: 'value' }, dst: { node: 'mathSubnet', port: 'a' } },
+      { src: { node: 'input2', port: 'value' }, dst: { node: 'mathSubnet', port: 'b' } },
+      { src: { node: 'mathSubnet', port: 'result' }, dst: { node: '@out/result', port: 'value' } }
+    ]
   }
 };
 
