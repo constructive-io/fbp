@@ -1,5 +1,37 @@
 import React, { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
-import type { Graph, Node, Edge, NodeDefinition, Prop } from '@fbp/types';
+import type { Graph, Node, Edge, NodeDefinition, Prop, Port } from '@fbp/types';
+
+// Node dimension constants (must match GraphNode.tsx)
+const NODE_WIDTH = 180;
+const NODE_HEADER_HEIGHT = 28;
+const PORT_HEIGHT = 24;
+
+// Helper to calculate node height based on number of ports
+function getNodeHeight(node: Node, definition?: NodeDefinition): number {
+  // For subnets, derive ports from boundary nodes
+  const isSubnet = node.nodes && node.nodes.length > 0;
+  let inputCount = 0;
+  let outputCount = 0;
+  
+  if (isSubnet) {
+    inputCount = (node.nodes || []).filter(n => n.name.startsWith('@in/')).length;
+    outputCount = (node.nodes || []).filter(n => n.name.startsWith('@out/')).length;
+  } else {
+    inputCount = (node.inputs || definition?.inputs || []).length;
+    outputCount = (node.outputs || definition?.outputs || []).length;
+  }
+  
+  return NODE_HEADER_HEIGHT + Math.max(inputCount, outputCount, 1) * PORT_HEIGHT + 8;
+}
+
+// Check if two rectangles overlap (any intersection counts)
+function rectanglesOverlap(
+  rect1: { minX: number; minY: number; maxX: number; maxY: number },
+  rect2: { minX: number; minY: number; maxX: number; maxY: number }
+): boolean {
+  return rect1.maxX >= rect2.minX && rect1.minX <= rect2.maxX &&
+         rect1.maxY >= rect2.minY && rect1.minY <= rect2.maxY;
+}
 
 export interface Point {
   x: number;
@@ -869,18 +901,33 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
       const end = action.end;
       if (!start) return state;
 
-      const minX = Math.min(start.x, end.x);
-      const maxX = Math.max(start.x, end.x);
-      const minY = Math.min(start.y, end.y);
-      const maxY = Math.max(start.y, end.y);
+      // Marquee bounding box
+      const marqueeRect = {
+        minX: Math.min(start.x, end.x),
+        maxX: Math.max(start.x, end.x),
+        minY: Math.min(start.y, end.y),
+        maxY: Math.max(start.y, end.y)
+      };
 
       const scopedNodes = getNodesInScope(state.graph, state.cwd);
       const previewNodeIds = new Set(
         scopedNodes
           .filter(n => {
-            const x = n.meta?.x || 0;
-            const y = n.meta?.y || 0;
-            return x >= minX && x <= maxX && y >= minY && y <= maxY;
+            const nodeX = n.meta?.x || 0;
+            const nodeY = n.meta?.y || 0;
+            const definition = state.definitions.get(n.type);
+            const nodeHeight = getNodeHeight(n, definition);
+            
+            // Node bounding box
+            const nodeRect = {
+              minX: nodeX,
+              maxX: nodeX + NODE_WIDTH,
+              minY: nodeY,
+              maxY: nodeY + nodeHeight
+            };
+            
+            // Select if marquee overlaps with node (any touch counts)
+            return rectanglesOverlap(marqueeRect, nodeRect);
           })
           .map(n => n.name)
       );
@@ -895,18 +942,33 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
       const newStart = { x: start.x + action.delta.x, y: start.y + action.delta.y };
       const newEnd = { x: end.x + action.delta.x, y: end.y + action.delta.y };
 
-      const minX = Math.min(newStart.x, newEnd.x);
-      const maxX = Math.max(newStart.x, newEnd.x);
-      const minY = Math.min(newStart.y, newEnd.y);
-      const maxY = Math.max(newStart.y, newEnd.y);
+      // Marquee bounding box
+      const marqueeRect = {
+        minX: Math.min(newStart.x, newEnd.x),
+        maxX: Math.max(newStart.x, newEnd.x),
+        minY: Math.min(newStart.y, newEnd.y),
+        maxY: Math.max(newStart.y, newEnd.y)
+      };
 
       const scopedNodes = getNodesInScope(state.graph, state.cwd);
       const previewNodeIds = new Set(
         scopedNodes
           .filter(n => {
-            const x = n.meta?.x || 0;
-            const y = n.meta?.y || 0;
-            return x >= minX && x <= maxX && y >= minY && y <= maxY;
+            const nodeX = n.meta?.x || 0;
+            const nodeY = n.meta?.y || 0;
+            const definition = state.definitions.get(n.type);
+            const nodeHeight = getNodeHeight(n, definition);
+            
+            // Node bounding box
+            const nodeRect = {
+              minX: nodeX,
+              maxX: nodeX + NODE_WIDTH,
+              minY: nodeY,
+              maxY: nodeY + nodeHeight
+            };
+            
+            // Select if marquee overlaps with node (any touch counts)
+            return rectanglesOverlap(marqueeRect, nodeRect);
           })
           .map(n => n.name)
       );

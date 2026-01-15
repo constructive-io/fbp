@@ -6,3 +6,4 @@ export { PropertiesPanel } from './PropertiesPanel';
 export { NodePalette } from './NodePalette';
 export { NodeIcon, NodeIconSvg } from './NodeIcon';
 export { StatusBar } from './StatusBar';
+export { CodeEditor } from './CodeEditor';

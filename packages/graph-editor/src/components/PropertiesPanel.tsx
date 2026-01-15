@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { useGraph, useSelection, useScopedGraph } from '../context/GraphContext';
 import type { PropDefinition, Prop, Graph } from '@fbp/types';
 import { clsx } from 'clsx';
+import { CodeEditor } from './CodeEditor';
 
 // Type for evaluate function passed from parent
 type EvaluateFn = (graph: Graph, options: { definitions: any[]; outputNode: string; outputPort: string }) => Promise<any>;
@@ -137,6 +138,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
                 value={getPropValue(propDef.name)}
                 onChange={(value) => handlePropChange(propDef.name, value)}
                 isChannelRef={isChannelReference(getPropValue(propDef.name))}
+                nodeType={node.type}
               />
             ))}
           </div>
@@ -203,10 +205,15 @@ interface PropertyFieldProps {
   value: unknown;
   onChange: (value: unknown) => void;
   isChannelRef: boolean;
+  nodeType?: string;
 }
 
-function PropertyField({ definition, value, onChange, isChannelRef }: PropertyFieldProps) {
+function PropertyField({ definition, value, onChange, isChannelRef, nodeType }: PropertyFieldProps) {
   const displayValue = value ?? definition.default ?? '';
+  
+  // Check if this property should use a code editor (e.g., GraphQL document field)
+  const isGraphQLDocument = nodeType === 'net/graphql/request' && definition.name === 'document';
+  const isCodeField = isGraphQLDocument;
 
   const renderInput = () => {
     switch (definition.type.toLowerCase()) {
@@ -258,6 +265,18 @@ function PropertyField({ definition, value, onChange, isChannelRef }: PropertyFi
         );
 
       default:
+        // Use CodeEditor for GraphQL document and other code fields
+        if (isCodeField) {
+          return (
+            <CodeEditor
+              value={displayValue as string}
+              onChange={onChange}
+              language={isGraphQLDocument ? 'graphql' : 'javascript'}
+              placeholder={isGraphQLDocument ? 'query { ... }' : ''}
+            />
+          );
+        }
+        
         return (
           <input
             type="text"
