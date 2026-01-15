@@ -10,7 +10,7 @@ const GRID_SIZE = 20;
 
 export function GraphCanvas() {
   const { state, dispatch } = useGraph();
-  const { clearSelection, deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, collapseSelection } = useSelection();
+  const { clearSelection, deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, collapseSelection, layoutSelection } = useSelection();
   const { goUp, canGoUp, diveInto } = useNavigation();
   const { nodes: scopedNodes, edges: scopedEdges } = useScopedGraph();
   
@@ -259,8 +259,15 @@ export function GraphCanvas() {
           pasteSelection();
         }
         break;
+      case 'l':
+      case 'L':
+        if (state.selection.nodeIds.size >= 1) {
+          e.preventDefault();
+          layoutSelection();
+        }
+        break;
     }
-  }, [deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, clearSelection, canGoUp, goUp, diveInto, collapseSelection, state.selection.nodeIds, state.graph.nodes, state.connecting.active, dispatch]);
+  }, [deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, clearSelection, canGoUp, goUp, diveInto, collapseSelection, layoutSelection, state.selection.nodeIds, state.graph.nodes, state.connecting.active, dispatch]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     if (e.code === 'Space') {

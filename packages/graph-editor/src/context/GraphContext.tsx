@@ -69,6 +69,7 @@ type GraphAction =
   | { type: 'COPY_SELECTION' }
   | { type: 'PASTE_SELECTION' }
   | { type: 'COLLAPSE_SELECTION' }
+  | { type: 'LAYOUT_SELECTION' }
   | { type: 'MOVE_NODES'; nodeIds: string[]; delta: Point }
   | { type: 'SET_VIEW'; view: Partial<ViewState> }
   | { type: 'DIVE_INTO'; nodeId: string }
@@ -717,6 +718,40 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
       };
     }
 
+    case 'LAYOUT_SELECTION': {
+      const selectedNodeIds = state.selection.nodeIds;
+      if (selectedNodeIds.size < 1) return state;
+
+      const scopedNodes = getNodesInScope(state.graph, state.cwd);
+      const scopedEdges = getEdgesInScope(state.graph, state.cwd);
+      const selectedNodes = scopedNodes.filter(n => selectedNodeIds.has(n.name));
+      
+      // Get edges that connect selected nodes (for layout algorithm)
+      const selectedEdges = scopedEdges.filter(e => 
+        selectedNodeIds.has(e.src.node) && selectedNodeIds.has(e.dst.node)
+      );
+      
+      // Apply autolayout to selected nodes
+      const layoutedNodes = autoLayoutNodes(selectedNodes, selectedEdges);
+      
+      // Create a map of new positions
+      const newPositions = new Map<string, { x: number; y: number }>();
+      layoutedNodes.forEach(n => {
+        newPositions.set(n.name, { x: n.meta?.x || 0, y: n.meta?.y || 0 });
+      });
+      
+      // Update nodes at current scope with new positions
+      const newGraph = updateNodesAtScope(state.graph, state.cwd, nodes =>
+        nodes.map(n => {
+          const newPos = newPositions.get(n.name);
+          if (!newPos) return n;
+          return { ...n, meta: { ...n.meta, x: newPos.x, y: newPos.y } };
+        })
+      );
+      
+      return { ...state, graph: newGraph };
+    }
+
     case 'MOVE_NODES': {
       const nodeIdSet = new Set(action.nodeIds);
       const newGraph = updateNodesAtScope(state.graph, state.cwd, nodes =>
@@ -976,6 +1011,7 @@ export function useSelection() {
     copySelection: () => dispatch({ type: 'COPY_SELECTION' }),
     pasteSelection: () => dispatch({ type: 'PASTE_SELECTION' }),
     collapseSelection: () => dispatch({ type: 'COLLAPSE_SELECTION' }),
+    layoutSelection: () => dispatch({ type: 'LAYOUT_SELECTION' }),
     deleteSelection: () => {
       dispatch({ type: 'DELETE_NODES', nodeIds: Array.from(state.selection.nodeIds) });
       dispatch({ type: 'DELETE_EDGES', edgeIds: Array.from(state.selection.edgeIds) });
