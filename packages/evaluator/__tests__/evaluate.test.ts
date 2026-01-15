@@ -5,7 +5,7 @@ import { uiDefinitions, pageDef, formDef, inputDef, buttonDef } from '../__fixtu
 
 describe('evaluate', () => {
   describe('math operations', () => {
-    it('should evaluate a simple add graph', () => {
+    it('should evaluate a simple add graph', async () => {
       const graph: Graph = {
         name: 'simple-add',
         nodes: [
@@ -19,7 +19,7 @@ describe('evaluate', () => {
         ]
       };
 
-      const result = evaluate(graph, {
+      const result = await evaluate(graph, {
         definitions: mathDefinitions,
         outputNode: 'add',
         outputPort: 'sum'
@@ -28,7 +28,7 @@ describe('evaluate', () => {
       expect(result).toBe(8);
     });
 
-    it('should evaluate a chained math graph (add then multiply)', () => {
+    it('should evaluate a chained math graph (add then multiply)', async () => {
       const graph: Graph = {
         name: 'chained-math',
         nodes: [
@@ -46,7 +46,7 @@ describe('evaluate', () => {
         ]
       };
 
-      const result = evaluate(graph, {
+      const result = await evaluate(graph, {
         definitions: mathDefinitions,
         outputNode: 'multiply',
         outputPort: 'product'
@@ -56,7 +56,7 @@ describe('evaluate', () => {
       expect(result).toBe(20);
     });
 
-    it('should use lazy evaluation (only evaluate needed nodes)', () => {
+    it('should use lazy evaluation (only evaluate needed nodes)', async () => {
       const evaluatedNodes: string[] = [];
       
       // Create definitions that track which nodes are evaluated
@@ -83,7 +83,7 @@ describe('evaluate', () => {
         ]
       };
 
-      evaluate(graph, {
+      await evaluate(graph, {
         definitions: trackingDefs,
         outputNode: 'add',
         outputPort: 'sum'
@@ -97,7 +97,7 @@ describe('evaluate', () => {
   });
 
   describe('UI vdom generation', () => {
-    it('should generate a simple page vdom', () => {
+    it('should generate a simple page vdom', async () => {
       const graph: Graph = {
         name: 'simple-page',
         nodes: [
@@ -113,7 +113,7 @@ describe('evaluate', () => {
         edges: []
       };
 
-      const result = evaluate(graph, {
+      const result = await evaluate(graph, {
         definitions: uiDefinitions,
         outputNode: 'page',
         outputPort: 'element'
@@ -127,7 +127,7 @@ describe('evaluate', () => {
       });
     });
 
-    it('should generate a form with children using edge array order', () => {
+    it('should generate a form with children using edge array order', async () => {
       const graph: Graph = {
         name: 'form-with-children',
         nodes: [
@@ -166,7 +166,7 @@ describe('evaluate', () => {
         ]
       };
 
-      const result = evaluate(graph, {
+      const result = await evaluate(graph, {
         definitions: uiDefinitions,
         outputNode: 'form',
         outputPort: 'element'
@@ -191,7 +191,7 @@ describe('evaluate', () => {
       });
     });
 
-    it('should respect edge array ordering', () => {
+    it('should respect edge array ordering', async () => {
       const graph: Graph = {
         name: 'array-order',
         nodes: [
@@ -227,7 +227,7 @@ describe('evaluate', () => {
         ]
       };
 
-      const result = evaluate(graph, {
+      const result = await evaluate(graph, {
         definitions: uiDefinitions,
         outputNode: 'form',
         outputPort: 'element'
@@ -238,7 +238,7 @@ describe('evaluate', () => {
       expect(result.children[1].key).toBe('second');
     });
 
-    it('should generate the full newsletter page example', () => {
+    it('should generate the full newsletter page example', async () => {
       const graph: Graph = {
         name: 'newsletter-page',
         nodes: [
@@ -286,7 +286,7 @@ describe('evaluate', () => {
         ]
       };
 
-      const result = evaluate(graph, {
+      const result = await evaluate(graph, {
         definitions: uiDefinitions,
         outputNode: 'page',
         outputPort: 'element'

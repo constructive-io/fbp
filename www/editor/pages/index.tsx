@@ -4,6 +4,19 @@ import { evaluate } from '@fbp/evaluator';
 import type { NodeDefinitionWithImpl } from '@fbp/evaluator';
 import type { Graph } from '@fbp/types';
 
+const graphInputDef: NodeDefinitionWithImpl = {
+  context: 'core',
+  category: 'graph',
+  type: 'core/graph/input',
+  inputs: [],
+  outputs: [{ name: 'value', type: 'any' }],
+  props: [
+    { name: 'value', type: 'any', description: 'Input value (set externally)' }
+  ],
+  description: 'Graph input boundary node',
+  impl: (_inputs, props) => ({ value: props?.value }),
+};
+
 const graphOutputDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'graph',
@@ -13,6 +26,20 @@ const graphOutputDef: NodeDefinitionWithImpl = {
   props: [],
   description: 'Graph output boundary node',
   impl: (inputs) => ({ value: inputs.value }),
+};
+
+const graphPropDef: NodeDefinitionWithImpl = {
+  context: 'core',
+  category: 'graph',
+  type: 'core/graph/prop',
+  inputs: [],
+  outputs: [{ name: 'value', type: 'any' }],
+  props: [
+    { name: 'value', type: 'any', description: 'Property value' },
+    { name: 'default', type: 'any', description: 'Default value for the prop' }
+  ],
+  description: 'Graph property boundary node',
+  impl: (_inputs, props) => ({ value: props?.value ?? props?.default }),
 };
 
 const mathDefinitions: NodeDefinitionWithImpl[] = [
@@ -48,7 +75,9 @@ const mathDefinitions: NodeDefinitionWithImpl[] = [
     outputs: [{ name: 'product', type: 'number' }],
     impl: (inputs) => ({ product: (inputs.a ?? 0) * (inputs.b ?? 0) }),
   },
+  graphInputDef,
   graphOutputDef,
+  graphPropDef,
 ];
 
 const uiDefinitions: NodeDefinitionWithImpl[] = [
@@ -136,7 +165,9 @@ const uiDefinitions: NodeDefinitionWithImpl[] = [
       }
     }),
   },
+  graphInputDef,
   graphOutputDef,
+  graphPropDef,
 ];
 
 const examples: Record<string, Graph> = {
@@ -297,9 +328,9 @@ export default function Home() {
   const [selectedOutputNode, setSelectedOutputNode] = useState<string | null>(null);
   const graph = examples[selectedExample];
 
-  const evaluateGraph = (nodeId: string) => {
+  const evaluateGraph = async (nodeId: string) => {
     try {
-      const result = evaluate(graph as Graph, {
+      const result = await evaluate(graph as Graph, {
         definitions: graph.definitions as NodeDefinitionWithImpl[],
         outputNode: nodeId,
         outputPort: 'value'

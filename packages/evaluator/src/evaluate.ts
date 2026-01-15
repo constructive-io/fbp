@@ -4,12 +4,13 @@ import type { NodeDefinitionWithImpl, EvaluateOptions } from './types';
 /**
  * Evaluate a graph starting from the specified output node/port.
  * Uses lazy evaluation - only evaluates nodes that are needed for the output.
+ * Fully async to support async node implementations.
  * 
  * @param graph - The graph to evaluate
  * @param options - Evaluation options including definitions, output node/port, and external inputs
- * @returns The value at the specified output port
+ * @returns Promise resolving to the value at the specified output port
  */
-export function evaluate(graph: Graph, options: EvaluateOptions): any {
+export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<any> {
   const { definitions, outputNode, outputPort, inputs = {}, props = {} } = options;
 
   // Build lookup maps
@@ -44,8 +45,9 @@ export function evaluate(graph: Graph, options: EvaluateOptions): any {
 
   /**
    * Recursively evaluate a node and return all its outputs.
+   * Fully async to support async node implementations.
    */
-  function evaluateNode(nodeName: string): Record<string, any> {
+  async function evaluateNode(nodeName: string): Promise<Record<string, any>> {
     // Check cache first
     if (cache.has(nodeName)) {
       return cache.get(nodeName)!;
@@ -93,15 +95,16 @@ export function evaluate(graph: Graph, options: EvaluateOptions): any {
         
         if (inputPort.multi) {
           // Multi-input port: collect all values in edge array order
-          nodeInputs[inputPort.name] = edges.map(edge => {
-            const upstreamOutputs = evaluateNode(edge.src.node);
+          const values = await Promise.all(edges.map(async edge => {
+            const upstreamOutputs = await evaluateNode(edge.src.node);
             return upstreamOutputs[edge.src.port];
-          });
+          }));
+          nodeInputs[inputPort.name] = values;
         } else {
           // Single input: take first edge if exists
           if (edges.length > 0) {
             const edge = edges[0];
-            const upstreamOutputs = evaluateNode(edge.src.node);
+            const upstreamOutputs = await evaluateNode(edge.src.node);
             nodeInputs[inputPort.name] = upstreamOutputs[edge.src.port];
           }
         }
@@ -123,8 +126,8 @@ export function evaluate(graph: Graph, options: EvaluateOptions): any {
       }
     }
 
-    // Call the implementation
-    const outputs = definition.impl(nodeInputs, nodeProps);
+    // Call the implementation (await in case it's async)
+    const outputs = await definition.impl(nodeInputs, nodeProps);
     
     // Cache and return
     cache.set(nodeName, outputs);
@@ -132,6 +135,6 @@ export function evaluate(graph: Graph, options: EvaluateOptions): any {
   }
 
   // Evaluate starting from the output node
-  const outputs = evaluateNode(outputNode);
+  const outputs = await evaluateNode(outputNode);
   return outputs[outputPort];
 }
