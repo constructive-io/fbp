@@ -21,7 +21,7 @@ export const jsonSelectDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'json',
   type: 'core/json/select',
-  icon: '·',
+  icon: 'circle',
   inputs: [
     { name: 'obj', type: 'json' }
   ],
@@ -78,7 +78,7 @@ export const jsonObjectDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'json',
   type: 'core/json/object',
-  icon: '{}',
+  icon: 'braces',
   inputs: [], // Dynamic inputs - any input name is valid
   outputs: [
     { name: 'value', type: 'json' }
@@ -107,7 +107,7 @@ export const flowGuardDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'flow',
   type: 'core/flow/guard',
-  icon: '⚡',
+  icon: 'zap',
   inputs: [
     { name: 'ok', type: 'boolean' },
     { name: 'error', type: 'json' }
@@ -154,7 +154,7 @@ export const stringTemplateDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'string',
   type: 'core/string/template',
-  icon: '"',
+  icon: 'quote',
   inputs: [], // Dynamic inputs based on template placeholders
   outputs: [
     { name: 'value', type: 'string' }
@@ -200,7 +200,7 @@ export const stringConcatDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'string',
   type: 'core/string/concat',
-  icon: '++',
+  icon: 'link',
   inputs: [
     { name: 'value', type: 'string' }
   ],

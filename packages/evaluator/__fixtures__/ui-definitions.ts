@@ -27,7 +27,7 @@ export const graphInputDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'graph',
   type: 'core/graph/input',
-  icon: '→',
+  icon: 'arrow-right',
   inputs: [],
   outputs: [{ name: 'value', type: 'any' }],
   props: [
@@ -42,7 +42,7 @@ export const graphOutputDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'graph',
   type: 'core/graph/output',
-  icon: '←',
+  icon: 'arrow-left',
   inputs: [{ name: 'value', type: 'any' }],
   outputs: [],
   props: [
@@ -56,7 +56,7 @@ export const graphPropDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'graph',
   type: 'core/graph/prop',
-  icon: '⚙',
+  icon: 'settings',
   inputs: [],
   outputs: [{ name: 'value', type: 'any' }],
   props: [
@@ -71,7 +71,7 @@ export const pageDef: NodeDefinitionWithImpl = {
   context: 'ui',
   category: 'layout',
   type: 'ui/layout/Page',
-  icon: '📄',
+  icon: 'file',
   inputs: [
     { name: 'children', type: 'Element[]', multi: true }
   ],
@@ -95,7 +95,7 @@ export const formDef: NodeDefinitionWithImpl = {
   context: 'ui',
   category: 'form',
   type: 'ui/form/Form',
-  icon: '📝',
+  icon: 'file-text',
   inputs: [
     { name: 'children', type: 'Element[]', multi: true }
   ],
@@ -119,7 +119,7 @@ export const inputDef: NodeDefinitionWithImpl = {
   context: 'ui',
   category: 'form',
   type: 'ui/form/Input',
-  icon: '⌨',
+  icon: 'text-cursor',
   inputs: [],
   outputs: [{ name: 'element', type: 'Element' }],
   props: [
@@ -146,7 +146,7 @@ export const buttonDef: NodeDefinitionWithImpl = {
   context: 'ui',
   category: 'form',
   type: 'ui/form/Button',
-  icon: '🔘',
+  icon: 'square',
   inputs: [],
   outputs: [{ name: 'element', type: 'Element' }],
   props: [
@@ -171,7 +171,7 @@ export const textDef: NodeDefinitionWithImpl = {
   context: 'ui',
   category: 'content',
   type: 'ui/content/Text',
-  icon: 'T',
+  icon: 'type',
   inputs: [],
   outputs: [{ name: 'element', type: 'Element' }],
   props: [

@@ -1,6 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { GraphEditor } from '@fbp/graph-editor';
-import { evaluate } from '@fbp/evaluator';
+import { 
+  evaluate,
+  mathDefinitions as evalMathDefs,
+  uiDefinitions as evalUiDefs,
+  coreDefinitions as evalCoreDefs,
+  netDefinitions as evalNetDefs,
+} from '@fbp/evaluator';
 import type { NodeDefinitionWithImpl } from '@fbp/evaluator';
 import type { Graph } from '@fbp/types';
 
@@ -97,6 +103,14 @@ const mathDefinitions: NodeDefinitionWithImpl[] = [
   graphInputDef,
   graphOutputDef,
   graphPropDef,
+];
+
+// Combined definitions that include all node types from the evaluator
+const allDefinitions: NodeDefinitionWithImpl[] = [
+  ...evalMathDefs,
+  ...evalUiDefs,
+  ...evalCoreDefs,
+  ...evalNetDefs,
 ];
 
 const uiDefinitions: NodeDefinitionWithImpl[] = [
@@ -372,6 +386,120 @@ const examples: Record<string, Graph> = {
       { src: { node: 'input1', port: 'value' }, dst: { node: 'mathSubnet', port: 'a' } },
       { src: { node: 'input2', port: 'value' }, dst: { node: 'mathSubnet', port: 'b' } },
       { src: { node: 'mathSubnet', port: 'result' }, dst: { node: '@out/result', port: 'value' } }
+    ]
+  },
+  'GraphQL Login (Extract Token)': {
+    name: 'graphql-login',
+    definitions: allDefinitions,
+    nodes: [
+      // Input nodes for credentials
+      { 
+        name: '@in/email', 
+        type: 'core/graph/input', 
+        kind: 'graphInput',
+        props: [
+          { name: 'valueType', type: 'string', value: 'string' },
+          { name: 'default', type: 'string', value: 'user@example.com' }
+        ],
+        meta: { x: 50, y: 50 } 
+      },
+      { 
+        name: '@in/password', 
+        type: 'core/graph/input', 
+        kind: 'graphInput',
+        props: [
+          { name: 'valueType', type: 'string', value: 'string' },
+          { name: 'default', type: 'string', value: 'password123' }
+        ],
+        meta: { x: 50, y: 150 } 
+      },
+      { 
+        name: '@in/rememberMe', 
+        type: 'core/graph/input', 
+        kind: 'graphInput',
+        props: [
+          { name: 'valueType', type: 'string', value: 'boolean' },
+          { name: 'default', type: 'boolean', value: true }
+        ],
+        meta: { x: 50, y: 250 } 
+      },
+      // Build variables object
+      {
+        name: 'buildVariables',
+        type: 'core/json/object',
+        meta: { x: 300, y: 100 }
+      },
+      // GraphQL request node
+      {
+        name: 'loginRequest',
+        type: 'net/graphql/request',
+        props: [
+          { name: 'endpoint', type: 'string', value: 'https://api.example.com/graphql' },
+          { 
+            name: 'document', 
+            type: 'string', 
+            value: `mutation Login($input: LoginInput!) {
+  login(input: $input) {
+    apiToken {
+      accessToken
+      accessTokenExpiresAt
+      id
+      userId
+    }
+  }
+}`
+          }
+        ],
+        meta: { x: 550, y: 100 }
+      },
+      // Extract properties from response
+      {
+        name: 'selectAccessToken',
+        type: 'core/json/select',
+        props: [{ name: 'path', type: 'string', value: 'login.apiToken.accessToken' }],
+        meta: { x: 800, y: 50 }
+      },
+      {
+        name: 'selectExpiresAt',
+        type: 'core/json/select',
+        props: [{ name: 'path', type: 'string', value: 'login.apiToken.accessTokenExpiresAt' }],
+        meta: { x: 800, y: 150 }
+      },
+      {
+        name: 'selectUserId',
+        type: 'core/json/select',
+        props: [{ name: 'path', type: 'string', value: 'login.apiToken.userId' }],
+        meta: { x: 800, y: 250 }
+      },
+      {
+        name: 'selectTokenId',
+        type: 'core/json/select',
+        props: [{ name: 'path', type: 'string', value: 'login.apiToken.id' }],
+        meta: { x: 800, y: 350 }
+      },
+      // Output nodes
+      { name: '@out/accessToken', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 50 } },
+      { name: '@out/expiresAt', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 150 } },
+      { name: '@out/userId', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 250 } },
+      { name: '@out/tokenId', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 350 } }
+    ],
+    edges: [
+      // Connect inputs to variables builder
+      { src: { node: '@in/email', port: 'value' }, dst: { node: 'buildVariables', port: 'email' } },
+      { src: { node: '@in/password', port: 'value' }, dst: { node: 'buildVariables', port: 'password' } },
+      { src: { node: '@in/rememberMe', port: 'value' }, dst: { node: 'buildVariables', port: 'rememberMe' } },
+      // Connect variables to GraphQL request
+      { src: { node: 'buildVariables', port: 'value' }, dst: { node: 'loginRequest', port: 'variables' } },
+      // Connect response data to selectors
+      { src: { node: 'loginRequest', port: 'data' }, dst: { node: 'selectAccessToken', port: 'obj' } },
+      { src: { node: 'loginRequest', port: 'data' }, dst: { node: 'selectExpiresAt', port: 'obj' } },
+      { src: { node: 'loginRequest', port: 'data' }, dst: { node: 'selectUserId', port: 'obj' } },
+      { src: { node: 'loginRequest', port: 'data' }, dst: { node: 'selectTokenId', port: 'obj' } },
+      // Connect selectors to outputs
+      { src: { node: 'selectAccessToken', port: 'value' }, dst: { node: '@out/accessToken', port: 'value' } },
+      { src: { node: 'selectExpiresAt', port: 'value' }, dst: { node: '@out/expiresAt', port: 'value' } },
+      { src: { node: 'selectUserId', port: 'value' }, dst: { node: '@out/userId', port: 'value' } },
+      { src: { node: 'selectTokenId', port: 'value' }, dst: { node: '@out/tokenId', port: 'value' } }
     ]
   }
 };

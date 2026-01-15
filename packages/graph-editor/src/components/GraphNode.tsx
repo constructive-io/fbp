@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { useGraph, useSelection, useNavigation } from '../context/GraphContext';
 import type { Node, Port } from '@fbp/types';
 import { clsx } from 'clsx';
+import { NodeIconSvg } from './NodeIcon';
 
 // Derive ports from boundary nodes inside a subnet (ensures ports are always in sync)
 // Exported so GraphEdge can also use it for port position lookups
@@ -175,16 +176,9 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
       />
       
       {definition?.icon && (
-        <text
-          x={10}
-          y={NODE_HEADER_HEIGHT / 2 + 1}
-          dominantBaseline="middle"
-          fill="rgba(255,255,255,0.7)"
-          fontSize={11}
-          fontFamily="system-ui, sans-serif"
-        >
-          {definition.icon}
-        </text>
+        <g transform={`translate(10, ${NODE_HEADER_HEIGHT / 2 - 5.5})`}>
+          <NodeIconSvg icon={definition.icon} size={11} />
+        </g>
       )}
       <text
         x={NODE_WIDTH / 2}

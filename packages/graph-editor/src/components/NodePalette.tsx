@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGraph } from '../context/GraphContext';
 import type { NodeDefinition } from '@fbp/types';
+import { NodeIcon } from './NodeIcon';
 
 const BOUNDARY_NODE_TYPES = ['core/graph/input', 'core/graph/output', 'core/graph/prop'];
 
@@ -56,7 +57,7 @@ export function NodePalette() {
                   className="w-full px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-left text-xs text-slate-300 transition-colors flex items-center gap-2"
                   title={`Add ${def.type}`}
                 >
-                  {def.icon && <span className="text-sm opacity-70">{def.icon}</span>}
+                  {def.icon && <NodeIcon icon={def.icon} size={14} className="opacity-70" />}
                   <span>{def.type.split('/').pop()}</span>
                 </button>
               ))}
