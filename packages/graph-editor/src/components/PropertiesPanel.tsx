@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { useGraph, useSelection, useScopedGraph } from '../context/GraphContext';
 import type { PropDefinition, Prop, Graph } from '@fbp/types';
 import { clsx } from 'clsx';
@@ -16,7 +16,7 @@ interface PropertiesPanelProps {
 export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEvaluation, evaluateFn, definitions }: PropertiesPanelProps) {
   const { state, dispatch, getDefinition, getShortName, isChannelReference } = useGraph();
   const { selection } = useSelection();
-  const { nodes: scopedNodes } = useScopedGraph();
+  const { nodes: scopedNodes, edges: scopedEdges } = useScopedGraph();
   const [internalResult, setInternalResult] = useState<unknown>(undefined);
   const [isEvaluating, setIsEvaluating] = useState(false);
   
@@ -30,13 +30,27 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   const selectedNode = selectedNodeId ? scopedNodes.find(n => n.name === selectedNodeId) : null;
   const isOutputNode = selectedNode?.type === 'core/graph/output';
   
+  // Construct a scoped graph for evaluation (works at any cwd level)
+  const scopedGraph = useMemo((): Graph => {
+    return {
+      name: state.cwd === '/' ? state.graph.name : `scope:${state.cwd}`,
+      nodes: scopedNodes,
+      edges: scopedEdges,
+      inputs: state.graph.inputs,
+      outputs: state.graph.outputs,
+      props: state.graph.props,
+      definitions: state.graph.definitions
+    };
+  }, [state.cwd, state.graph.name, state.graph.inputs, state.graph.outputs, state.graph.props, state.graph.definitions, scopedNodes, scopedEdges]);
+  
   // Evaluate when output node is selected and we have evaluateFn
   const handleEvaluate = useCallback(async () => {
     if (!evaluateFn || !definitions || !selectedNodeId || !isOutputNode) return;
     
     setIsEvaluating(true);
     try {
-      const result = await evaluateFn(state.graph as Graph, {
+      // Use scopedGraph instead of state.graph for evaluation at current cwd level
+      const result = await evaluateFn(scopedGraph, {
         definitions,
         outputNode: selectedNodeId,
         outputPort: 'value'
@@ -48,7 +62,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
     } finally {
       setIsEvaluating(false);
     }
-  }, [evaluateFn, definitions, selectedNodeId, isOutputNode, state.graph]);
+  }, [evaluateFn, definitions, selectedNodeId, isOutputNode, scopedGraph]);
   
   // Auto-evaluate when output node is selected
   useEffect(() => {
