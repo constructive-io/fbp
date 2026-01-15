@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { useGraph, useSelection } from '../context/GraphContext';
+import { useGraph, useSelection, useScopedGraph } from '../context/GraphContext';
 import type { PropDefinition, Prop, Graph } from '@fbp/types';
 import { clsx } from 'clsx';
 
@@ -16,6 +16,7 @@ interface PropertiesPanelProps {
 export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEvaluation, evaluateFn, definitions }: PropertiesPanelProps) {
   const { state, dispatch, getDefinition, getShortName, isChannelReference } = useGraph();
   const { selection } = useSelection();
+  const { nodes: scopedNodes } = useScopedGraph();
   const [internalResult, setInternalResult] = useState<unknown>(undefined);
   const [isEvaluating, setIsEvaluating] = useState(false);
   
@@ -24,9 +25,9 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
 
   const selectedNodeIds = Array.from(selection.nodeIds);
   
-  // Get the selected node for evaluation
+  // Get the selected node for evaluation (use scoped nodes for current scope level)
   const selectedNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
-  const selectedNode = selectedNodeId ? state.graph.nodes.find(n => n.name === selectedNodeId) : null;
+  const selectedNode = selectedNodeId ? scopedNodes.find(n => n.name === selectedNodeId) : null;
   const isOutputNode = selectedNode?.type === 'core/graph/output';
   
   // Evaluate when output node is selected and we have evaluateFn
@@ -84,7 +85,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   }
 
   const nodeId = selectedNodeIds[0];
-  const node = state.graph.nodes.find(n => n.name === nodeId);
+  const node = scopedNodes.find(n => n.name === nodeId);
   
   if (!node) return null;
 
