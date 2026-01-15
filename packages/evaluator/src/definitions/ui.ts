@@ -42,7 +42,7 @@ export const graphOutputDef: NodeDefinitionWithImpl = {
   category: 'graph',
   type: 'core/graph/output',
   inputs: [{ name: 'value', type: 'any' }],
-  outputs: [{ name: 'value', type: 'any' }],
+  outputs: [],
   props: [
     { name: 'valueType', type: 'enum', default: 'any', options: ['any', 'number', 'string', 'boolean', 'Element'] }
   ],
