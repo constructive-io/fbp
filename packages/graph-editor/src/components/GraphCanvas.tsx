@@ -281,7 +281,8 @@ export function GraphCanvas() {
     if (!state.connecting.active || !state.connecting.sourceNode || !state.connecting.sourcePort) {
       return null;
     }
-    const node = state.graph.nodes.find(n => n.name === state.connecting.sourceNode);
+    // Use scoped nodes to find the source node (works in subgraphs)
+    const node = scopedNodes.find(n => n.name === state.connecting.sourceNode);
     if (!node) return null;
     
     const x = node.meta?.x || 0;
