@@ -3,6 +3,21 @@ import { useGraph, useSelection, useNavigation } from '../context/GraphContext';
 import type { Node, Port } from '@fbp/types';
 import { clsx } from 'clsx';
 
+// Derive ports from boundary nodes inside a subnet (ensures ports are always in sync)
+// Exported so GraphEdge can also use it for port position lookups
+export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Port[] {
+  const prefix = type === 'input' ? '@in/' : '@out/';
+  return nodes
+    .filter(n => n.name.startsWith(prefix))
+    .map(n => {
+      const portName = n.name.slice(prefix.length);
+      // Get valueType from the boundary node's props if set
+      const valueTypeProp = n.props?.find(p => p.name === 'valueType');
+      const portType = (valueTypeProp?.value as string) || 'any';
+      return { name: portName, type: portType };
+    });
+}
+
 const NODE_WIDTH = 180;
 const NODE_HEADER_HEIGHT = 28;
 const PORT_HEIGHT = 24;
@@ -27,8 +42,14 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
   const isPreview = state.boxSelect.previewNodeIds.has(node.name);
   const isSubnet = node.nodes && node.nodes.length > 0;
   
-  const inputs = node.inputs || definition?.inputs || [];
-  const outputs = node.outputs || definition?.outputs || [];
+  // For subnets, derive inputs/outputs from boundary nodes inside (always in sync)
+  // For regular nodes, use node.inputs/outputs or fall back to definition
+  const inputs = isSubnet 
+    ? deriveBoundaryPorts(node.nodes || [], 'input')
+    : (node.inputs || definition?.inputs || []);
+  const outputs = isSubnet 
+    ? deriveBoundaryPorts(node.nodes || [], 'output')
+    : (node.outputs || definition?.outputs || []);
   const nodeHeight = NODE_HEADER_HEIGHT + Math.max(inputs.length, outputs.length, 1) * PORT_HEIGHT + 8;
 
   const x = node.meta?.x || 0;
@@ -259,9 +280,13 @@ export function getNodePortPosition(
   const x = node.meta?.x || 0;
   const y = node.meta?.y || 0;
   
-  const ports = isOutput
-    ? (node.outputs || definition?.outputs || [])
-    : (node.inputs || definition?.inputs || []);
+  // For subnets, derive ports from boundary nodes inside (always in sync)
+  const isSubnet = node.nodes && node.nodes.length > 0;
+  const ports = isSubnet
+    ? deriveBoundaryPorts(node.nodes || [], isOutput ? 'output' : 'input')
+    : isOutput
+      ? (node.outputs || definition?.outputs || [])
+      : (node.inputs || definition?.inputs || []);
   
   const portIndex = ports.findIndex(p => p.name === portName);
   if (portIndex === -1) return null;

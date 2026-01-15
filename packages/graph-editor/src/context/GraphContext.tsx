@@ -235,12 +235,12 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
         meta: { x: position.x, y: position.y }
       };
       
-      // Add node at current scope
-      let newGraph = updateNodesAtScope(state.graph, state.cwd, nodes => [...nodes, newNode]);
+      // Add node at current scope - ports are derived from boundary nodes automatically
+      // (GraphNode.deriveBoundaryPorts computes inputs/outputs from @in/@out nodes)
+      const newGraph = updateNodesAtScope(state.graph, state.cwd, nodes => [...nodes, newNode]);
       
-      // Update interface arrays - either on graph (root) or parent subnet node (nested)
+      // For root level, also update graph.inputs/outputs/props for serialization
       if (isRootCwd(state.cwd)) {
-        // At root level: update graph.inputs/outputs/props
         const newPort = { name: portName, type: 'any' };
         let inputs = state.graph.inputs || [];
         let outputs = state.graph.outputs || [];
@@ -258,39 +258,9 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
           ...state,
           graph: { ...newGraph, inputs, outputs, props }
         };
-      } else {
-        // Inside a subnet: update the parent subnet node's inputs/outputs/props
-        // cwd is like "/subnet1" or "/subnet1/subnet2"
-        // We need to find the subnet node and update its ports
-        const pathSegments = cwdToPath(state.cwd);
-        const subnetName = pathSegments[pathSegments.length - 1];
-        const parentCwd = pathSegments.length === 1 ? '/' : '/' + pathSegments.slice(0, -1).join('/');
-        
-        const newPort = { name: portName, type: 'any' };
-        
-        // Update the subnet node at the parent scope
-        newGraph = updateNodesAtScope(newGraph, parentCwd, nodes =>
-          nodes.map(n => {
-            if (n.name !== subnetName) return n;
-            let inputs = n.inputs || [];
-            let outputs = n.outputs || [];
-            let props = n.props || [];
-            
-            if (boundaryType === 'input') {
-              inputs = [...inputs, newPort];
-            } else if (boundaryType === 'output') {
-              outputs = [...outputs, newPort];
-            } else {
-              // Node.props uses Prop[] type (no default property)
-              props = [...props, { name: portName, type: 'any' }];
-            }
-            
-            return { ...n, inputs, outputs, props };
-          })
-        );
-        
-        return { ...state, graph: newGraph };
       }
+      
+      return { ...state, graph: newGraph };
     }
 
     case 'UPDATE_NODE': {
@@ -332,29 +302,15 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
           .map(n => n.name.replace('@prop/', ''))
       );
       
-      // Remove boundary node entries - either from graph (root) or parent subnet node (nested)
+      // For root level, update graph.inputs/outputs/props for serialization
+      // For nested subnets, ports are derived from boundary nodes automatically
+      // (GraphNode.deriveBoundaryPorts computes inputs/outputs from @in/@out nodes)
       if (isRootCwd(state.cwd)) {
-        // At root level: update graph.inputs/outputs/props
         const inputs = (state.graph.inputs || []).filter(p => !deletedInputNames.has(p.name));
         const outputs = (state.graph.outputs || []).filter(p => !deletedOutputNames.has(p.name));
         const props = (state.graph.props || []).filter(p => !deletedPropNames.has(p.name));
         
         newGraph = { ...newGraph, inputs, outputs, props };
-      } else if (deletedInputNames.size > 0 || deletedOutputNames.size > 0 || deletedPropNames.size > 0) {
-        // Inside a subnet: update the parent subnet node's inputs/outputs/props
-        const pathSegments = cwdToPath(state.cwd);
-        const subnetName = pathSegments[pathSegments.length - 1];
-        const parentCwd = pathSegments.length === 1 ? '/' : '/' + pathSegments.slice(0, -1).join('/');
-        
-        newGraph = updateNodesAtScope(newGraph, parentCwd, nodes =>
-          nodes.map(n => {
-            if (n.name !== subnetName) return n;
-            const inputs = (n.inputs || []).filter(p => !deletedInputNames.has(p.name));
-            const outputs = (n.outputs || []).filter(p => !deletedOutputNames.has(p.name));
-            const props = (n.props || []).filter(p => !deletedPropNames.has(p.name));
-            return { ...n, inputs, outputs, props };
-          })
-        );
       }
       
       return {
