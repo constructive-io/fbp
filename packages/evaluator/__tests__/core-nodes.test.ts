@@ -10,10 +10,12 @@ describe('core nodes', () => {
         name: 'json-select-simple',
         nodes: [
           { 
-            name: '@in/data', 
-            type: 'core/graph/input',
-            kind: 'graphInput',
-            props: [{ name: 'default', type: 'json', value: { user: { name: 'Alice', age: 30 } } }]
+            name: 'input_data', 
+            type: 'graphInput',
+            props: [
+              { name: 'portName', type: 'string', value: 'data' },
+              { name: 'default', type: 'json', value: { user: { name: 'Alice', age: 30 } } }
+            ]
           },
           { 
             name: 'select', 
@@ -22,7 +24,7 @@ describe('core nodes', () => {
           }
         ],
         edges: [
-          { src: { node: '@in/data', port: 'value' }, dst: { node: 'select', port: 'obj' } }
+          { src: { node: 'input_data', port: 'value' }, dst: { node: 'select', port: 'obj' } }
         ]
       };
 
@@ -40,10 +42,12 @@ describe('core nodes', () => {
         name: 'json-select-nested',
         nodes: [
           { 
-            name: '@in/data', 
-            type: 'core/graph/input',
-            kind: 'graphInput',
-            props: [{ name: 'default', type: 'json', value: { response: { data: { users: [{ id: 1 }, { id: 2 }] } } } }]
+            name: 'input_data', 
+            type: 'graphInput',
+            props: [
+              { name: 'portName', type: 'string', value: 'data' },
+              { name: 'default', type: 'json', value: { response: { data: { users: [{ id: 1 }, { id: 2 }] } } } }
+            ]
           },
           { 
             name: 'select', 
@@ -52,7 +56,7 @@ describe('core nodes', () => {
           }
         ],
         edges: [
-          { src: { node: '@in/data', port: 'value' }, dst: { node: 'select', port: 'obj' } }
+          { src: { node: 'input_data', port: 'value' }, dst: { node: 'select', port: 'obj' } }
         ]
       };
 
@@ -70,10 +74,12 @@ describe('core nodes', () => {
         name: 'json-select-missing',
         nodes: [
           { 
-            name: '@in/data', 
-            type: 'core/graph/input',
-            kind: 'graphInput',
-            props: [{ name: 'default', type: 'json', value: { foo: 'bar' } }]
+            name: 'input_data', 
+            type: 'graphInput',
+            props: [
+              { name: 'portName', type: 'string', value: 'data' },
+              { name: 'default', type: 'json', value: { foo: 'bar' } }
+            ]
           },
           { 
             name: 'select', 
@@ -82,7 +88,7 @@ describe('core nodes', () => {
           }
         ],
         edges: [
-          { src: { node: '@in/data', port: 'value' }, dst: { node: 'select', port: 'obj' } }
+          { src: { node: 'input_data', port: 'value' }, dst: { node: 'select', port: 'obj' } }
         ]
       };
 

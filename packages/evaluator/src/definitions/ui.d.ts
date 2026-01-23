@@ -1,0 +1,10 @@
+import type { NodeDefinitionWithImpl } from '../types';
+export declare const graphInputDef: NodeDefinitionWithImpl;
+export declare const graphOutputDef: NodeDefinitionWithImpl;
+export declare const graphPropDef: NodeDefinitionWithImpl;
+export declare const pageDef: NodeDefinitionWithImpl;
+export declare const formDef: NodeDefinitionWithImpl;
+export declare const inputDef: NodeDefinitionWithImpl;
+export declare const buttonDef: NodeDefinitionWithImpl;
+export declare const textDef: NodeDefinitionWithImpl;
+export declare const uiDefinitions: NodeDefinitionWithImpl[];

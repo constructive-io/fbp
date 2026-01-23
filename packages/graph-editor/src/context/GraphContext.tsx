@@ -14,7 +14,7 @@ import {
   migrateLegacyGraph,
   deriveBoundaryPorts,
 } from '../utils/graphTransform';
-import { BOUNDARY_PREFIXES } from '../types';
+import { BOUNDARY_NODE_TYPES, isBoundaryNodeType } from '../types';
 
 // Re-export getEdgeId for backward compatibility
 export { getEdgeId } from '../utils/graphTransform';
@@ -26,14 +26,14 @@ const PORT_HEIGHT = 24;
 
 // Helper to calculate node height based on number of ports
 function getNodeHeight(node: Node, definition?: NodeDefinition): number {
-  // For subnets, derive ports from boundary nodes
+  // For subnets, derive ports from boundary nodes (identified by type, not prefix)
   const isSubnet = node.nodes && node.nodes.length > 0;
   let inputCount = 0;
   let outputCount = 0;
   
   if (isSubnet) {
-    inputCount = (node.nodes || []).filter(n => n.name.startsWith('@in/')).length;
-    outputCount = (node.nodes || []).filter(n => n.name.startsWith('@out/')).length;
+    inputCount = (node.nodes || []).filter(n => n.type === BOUNDARY_NODE_TYPES.input).length;
+    outputCount = (node.nodes || []).filter(n => n.type === BOUNDARY_NODE_TYPES.output).length;
   } else {
     inputCount = (node.inputs || definition?.inputs || []).length;
     outputCount = (node.outputs || definition?.outputs || []).length;
@@ -147,13 +147,11 @@ function autoLayoutNodes(nodes: Node[], edges: Edge[]): Node[] {
   const START_X = 50;
   const START_Y = 50;
 
-  // Separate nodes by type
-  const inputNodes = nodes.filter(n => n.name.startsWith('@in/'));
-  const outputNodes = nodes.filter(n => n.name.startsWith('@out/'));
-  const propNodes = nodes.filter(n => n.name.startsWith('@prop/'));
-  const regularNodes = nodes.filter(n => 
-    !n.name.startsWith('@in/') && !n.name.startsWith('@out/') && !n.name.startsWith('@prop/')
-  );
+  // Separate nodes by type (boundary nodes identified by type property, not prefix)
+  const inputNodes = nodes.filter(n => n.type === BOUNDARY_NODE_TYPES.input);
+  const outputNodes = nodes.filter(n => n.type === BOUNDARY_NODE_TYPES.output);
+  const propNodes = nodes.filter(n => n.type === BOUNDARY_NODE_TYPES.prop);
+  const regularNodes = nodes.filter(n => !isBoundaryNodeType(n.type));
 
   // Build adjacency map for regular nodes (who depends on whom)
   const nodeDepth = new Map<string, number>();
@@ -255,27 +253,27 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
 
     case 'ADD_BOUNDARY_NODE': {
       const { boundaryType, position } = action;
-      const prefix = BOUNDARY_PREFIXES[boundaryType];
-      const baseName = boundaryType;
-      const nodeType = `core/graph/${boundaryType}`;
-      const kind = boundaryType === 'input' ? 'graphInput' : boundaryType === 'output' ? 'graphOutput' : 'graphProp';
+      // Use type-based boundary node identification (not prefix-based)
+      const nodeType = BOUNDARY_NODE_TYPES[boundaryType];
       
       // Count existing boundary nodes of this type to generate next number (scope-aware)
       const scopedNodes = getNodesAtScope(state.graph, state.cwd);
-      const existingNodes = scopedNodes.filter(n => n.name.startsWith(prefix + baseName));
+      const existingNodes = scopedNodes.filter(n => n.type === nodeType);
       const existingNumbers = existingNodes.map(n => {
-        const match = n.name.match(new RegExp(`^${prefix}${baseName}(\\d+)$`));
+        const match = n.name.match(new RegExp(`^${boundaryType}_(\\d+)$`));
         return match ? parseInt(match[1], 10) : 0;
       });
       const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-      const portName = `${baseName}${nextNumber}`;
-      const nodeName = `${prefix}${portName}`;
+      const portOrPropName = `${boundaryType}${nextNumber}`;
+      const nodeName = `${boundaryType}_${nextNumber}`;
       
+      // Create node with portName/propName as a property (not in the node name)
+      const propName = boundaryType === 'prop' ? 'propName' : 'portName';
       const newNode: Node = {
         name: nodeName,
         type: nodeType,
-        kind: kind as 'graphInput' | 'graphOutput' | 'graphProp',
-        meta: { x: position.x, y: position.y }
+        meta: { x: position.x, y: position.y },
+        props: [{ name: propName, type: 'string', value: portOrPropName }]
       };
       
       // Add node at current scope
@@ -495,10 +493,10 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
         }
       });
 
-      // Find existing boundary nodes in selection
-      const existingInputs = selectedNodes.filter(n => n.name.startsWith('@in/'));
-      const existingOutputs = selectedNodes.filter(n => n.name.startsWith('@out/'));
-      const existingProps = selectedNodes.filter(n => n.name.startsWith('@prop/'));
+      // Find existing boundary nodes in selection (identified by type, not prefix)
+      const existingInputs = selectedNodes.filter(n => n.type === BOUNDARY_NODE_TYPES.input);
+      const existingOutputs = selectedNodes.filter(n => n.type === BOUNDARY_NODE_TYPES.output);
+      const existingProps = selectedNodes.filter(n => n.type === BOUNDARY_NODE_TYPES.prop);
 
       // Create new boundary nodes for external connections
       const newInputNodes: Node[] = [];
@@ -511,26 +509,26 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
       const subnetNumber = existingSubnets.length + 1;
       const subnetName = `subnet${subnetNumber}`;
 
-      // Process incoming edges - create @in/ nodes
+      // Process incoming edges - create graphInput nodes (property-based naming)
       let inputCounter = existingInputs.length + 1;
       const incomingPortMap = new Map<string, string>(); // "dstNode:dstPort" -> inputPortName
       
       incomingEdges.forEach(edge => {
         const key = `${edge.dst.node}:${edge.dst.port}`;
         if (!incomingPortMap.has(key)) {
-          const inputName = `input${inputCounter++}`;
-          const inputNodeName = `@in/${inputName}`;
-          incomingPortMap.set(key, inputName);
+          const inputPortName = `input${inputCounter}`;
+          const inputNodeName = `input_${inputCounter++}`;
+          incomingPortMap.set(key, inputPortName);
           
-          // Create @in/ node inside subnet
+          // Create graphInput node inside subnet (with portName as property)
           newInputNodes.push({
             name: inputNodeName,
-            type: 'core/graph/input',
-            kind: 'graphInput',
-            meta: { x: (edge.dst.node ? (selectedNodes.find(n => n.name === edge.dst.node)?.meta?.x || 0) - 150 : 0), y: selectedNodes.find(n => n.name === edge.dst.node)?.meta?.y || 0 }
+            type: BOUNDARY_NODE_TYPES.input,
+            meta: { x: (edge.dst.node ? (selectedNodes.find(n => n.name === edge.dst.node)?.meta?.x || 0) - 150 : 0), y: selectedNodes.find(n => n.name === edge.dst.node)?.meta?.y || 0 },
+            props: [{ name: 'portName', type: 'string', value: inputPortName }]
           });
           
-          // Create internal edge from @in/ to original destination
+          // Create internal edge from graphInput to original destination
           newInternalEdges.push({
             src: { node: inputNodeName, port: 'value' },
             dst: { node: edge.dst.node, port: edge.dst.port }
@@ -545,26 +543,26 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
         });
       });
 
-      // Process outgoing edges - create @out/ nodes
+      // Process outgoing edges - create graphOutput nodes (property-based naming)
       let outputCounter = existingOutputs.length + 1;
       const outgoingPortMap = new Map<string, string>(); // "srcNode:srcPort" -> outputPortName
       
       outgoingEdges.forEach(edge => {
         const key = `${edge.src.node}:${edge.src.port}`;
         if (!outgoingPortMap.has(key)) {
-          const outputName = `output${outputCounter++}`;
-          const outputNodeName = `@out/${outputName}`;
-          outgoingPortMap.set(key, outputName);
+          const outputPortName = `output${outputCounter}`;
+          const outputNodeName = `output_${outputCounter++}`;
+          outgoingPortMap.set(key, outputPortName);
           
-          // Create @out/ node inside subnet
+          // Create graphOutput node inside subnet (with portName as property)
           newOutputNodes.push({
             name: outputNodeName,
-            type: 'core/graph/output',
-            kind: 'graphOutput',
-            meta: { x: (selectedNodes.find(n => n.name === edge.src.node)?.meta?.x || 0) + 150, y: selectedNodes.find(n => n.name === edge.src.node)?.meta?.y || 0 }
+            type: BOUNDARY_NODE_TYPES.output,
+            meta: { x: (selectedNodes.find(n => n.name === edge.src.node)?.meta?.x || 0) + 150, y: selectedNodes.find(n => n.name === edge.src.node)?.meta?.y || 0 },
+            props: [{ name: 'portName', type: 'string', value: outputPortName }]
           });
           
-          // Create internal edge from original source to @out/
+          // Create internal edge from original source to graphOutput
           newInternalEdges.push({
             src: { node: edge.src.node, port: edge.src.port },
             dst: { node: outputNodeName, port: 'value' }
@@ -579,16 +577,24 @@ function graphReducer(state: GraphEditorState, action: GraphAction): GraphEditor
         });
       });
 
-      // Build subnet inputs/outputs/props from boundary nodes
+      // Build subnet inputs/outputs/props from boundary nodes (read portName/propName from properties)
+      const getPortName = (n: Node): string => {
+        const prop = n.props?.find(p => p.name === 'portName');
+        return (prop?.value as string) || n.name;
+      };
+      const getPropName = (n: Node): string => {
+        const prop = n.props?.find(p => p.name === 'propName');
+        return (prop?.value as string) || n.name;
+      };
       const subnetInputs = [
-        ...existingInputs.map(n => ({ name: n.name.replace('@in/', ''), type: 'any' })),
+        ...existingInputs.map(n => ({ name: getPortName(n), type: 'any' })),
         ...Array.from(incomingPortMap.values()).map(name => ({ name, type: 'any' }))
       ];
       const subnetOutputs = [
-        ...existingOutputs.map(n => ({ name: n.name.replace('@out/', ''), type: 'any' })),
+        ...existingOutputs.map(n => ({ name: getPortName(n), type: 'any' })),
         ...Array.from(outgoingPortMap.values()).map(name => ({ name, type: 'any' }))
       ];
-      const subnetProps = existingProps.map(n => ({ name: n.name.replace('@prop/', ''), type: 'any' }));
+      const subnetProps = existingProps.map(n => ({ name: getPropName(n), type: 'any' }));
 
       // Collect all nodes for the subnet and apply autolayout
       const allSubnetNodes = [...selectedNodes, ...newInputNodes, ...newOutputNodes];

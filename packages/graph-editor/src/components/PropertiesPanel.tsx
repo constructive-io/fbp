@@ -3,8 +3,7 @@ import { useGraph, useSelection, useScopedGraph } from '../context/GraphContext'
 import type { PropDefinition, Prop, Graph } from '@fbp/types';
 import { clsx } from 'clsx';
 import { CodeEditor } from './CodeEditor';
-
-const BOUNDARY_PREFIXES = ['@in/', '@out/', '@prop/'];
+import { BOUNDARY_NODE_TYPES, isBoundaryNode, getPortNameFromBoundary } from '../types';
 
 // Type for evaluate function passed from parent
 type EvaluateFn = (graph: Graph, options: { definitions: any[]; outputNode: string; outputPort: string }) => Promise<any>;
@@ -37,13 +36,16 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   // Get the selected node for evaluation (use scoped nodes for current scope level)
   const selectedNodeId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
   const selectedNode = selectedNodeId ? scopedNodes.find(n => n.name === selectedNodeId) : null;
-  const isOutputNode = selectedNode?.type === 'core/graph/output';
+  const isOutputNode = selectedNode?.type === 'graphOutput';
   
   // Compute boundary node info (safe even when no node selected)
+  // Boundary nodes are identified by their type property, not by name prefix
   const nodeName = selectedNode?.name || '';
-  const isBoundaryNode = BOUNDARY_PREFIXES.some(prefix => nodeName.startsWith(prefix));
-  const boundaryPrefix = BOUNDARY_PREFIXES.find(prefix => nodeName.startsWith(prefix)) || '';
-  const editableNameValue = isBoundaryNode ? nodeName.slice(boundaryPrefix.length) : nodeName;
+  const nodeIsBoundary = selectedNode ? isBoundaryNode(selectedNode) : false;
+  // For boundary nodes, the editable name is the portName/propName property value
+  const editableNameValue = nodeIsBoundary && selectedNode 
+    ? (getPortNameFromBoundary(selectedNode) || nodeName)
+    : nodeName;
   
   // Sync editedName when selected node changes
   useEffect(() => {
@@ -60,13 +62,19 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   }, [isEditingName]);
   
   // Handlers for name editing
+  // For boundary nodes, we update the portName/propName property instead of renaming the node
   const handleNameSubmit = useCallback(() => {
-    if (editedName && editedName !== editableNameValue && nodeName) {
-      const newFullName = isBoundaryNode ? `${boundaryPrefix}${editedName}` : editedName;
-      dispatch({ type: 'RENAME_NODE', oldName: nodeName, newName: newFullName });
+    if (editedName && editedName !== editableNameValue && nodeName && selectedNode) {
+      if (nodeIsBoundary) {
+        // Update the portName or propName property
+        const propName = selectedNode.type === BOUNDARY_NODE_TYPES.prop ? 'propName' : 'portName';
+        dispatch({ type: 'SET_NODE_PROP', nodeId: nodeName, propName, value: editedName });
+      } else {
+        dispatch({ type: 'RENAME_NODE', oldName: nodeName, newName: editedName });
+      }
     }
     setIsEditingName(false);
-  }, [editedName, editableNameValue, isBoundaryNode, boundaryPrefix, nodeName, dispatch]);
+  }, [editedName, editableNameValue, nodeIsBoundary, nodeName, selectedNode, dispatch]);
   
   const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -181,10 +189,10 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
       <div className="p-3 border-b border-slate-700">
         <div className="text-xs text-slate-500 mb-1">Node</div>
         <div className="font-semibold text-white flex items-center gap-1">
-          {isBoundaryNode && (
-            <span className="text-slate-500">{boundaryPrefix}</span>
+          {nodeIsBoundary && selectedNode && (
+            <span className="text-slate-500">{selectedNode.type}:</span>
           )}
-          {isBoundaryNode ? (
+          {nodeIsBoundary ? (
             isEditingName ? (
               <input
                 ref={nameInputRef}
@@ -232,7 +240,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
           </div>
         )}
 
-        {node.type === 'core/graph/output' && (
+        {node.type === 'graphOutput' && (
           <div className="mt-6 pt-4 border-t border-slate-700">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-slate-500 uppercase tracking-wider">Evaluated Result</span>
