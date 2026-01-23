@@ -6,10 +6,15 @@
  * 2. View State (how you're looking at it - cwd, selections, pan/zoom)
  * 
  * Key concepts:
- * - Filesystem mental model: nodes are folders, boundary nodes (@in:@out:@prop) define interfaces
+ * - Filesystem mental model: nodes are folders, boundary nodes define interfaces
  * - Process model: each tab/view is a "process" with its own cwd, selection, view state
  * - Single source of truth: boundary nodes ARE the interface definition
  * - Derived fields: inputs/outputs/props are computed from boundary nodes at runtime
+ * 
+ * Boundary Node Design (property-based):
+ * - Boundary nodes have normal keys (e.g., 'input_a', 'output_result', 'prop_scale')
+ * - The node's `type` property identifies it as a boundary node: 'graphInput', 'graphOutput', 'graphProp'
+ * - The port/prop name is stored as a property: { name: 'portName', value: 'a' } or { name: 'propName', value: 'scale' }
  */
 
 import type { Graph, Node, Edge, NodeDefinition, Port, PropDefinition } from '@fbp/types';
@@ -143,41 +148,69 @@ export interface EditorState {
 export type BoundaryNodeType = 'input' | 'output' | 'prop';
 
 /**
- * Boundary node prefixes
+ * Boundary node type values (used in node.type field)
  */
-export const BOUNDARY_PREFIXES = {
-  input: '@in:',
-  output: '@out:',
-  prop: '@prop:',
+export const BOUNDARY_NODE_TYPES = {
+  input: 'graphInput',
+  output: 'graphOutput',
+  prop: 'graphProp',
 } as const;
 
 /**
- * Check if a node name is a boundary node
+ * Check if a node is a boundary node by its type property
  */
-export function isBoundaryNode(name: string): boolean {
-  return name.startsWith(BOUNDARY_PREFIXES.input) ||
-         name.startsWith(BOUNDARY_PREFIXES.output) ||
-         name.startsWith(BOUNDARY_PREFIXES.prop);
+export function isBoundaryNode(node: { type: string }): boolean {
+  return node.type === BOUNDARY_NODE_TYPES.input ||
+         node.type === BOUNDARY_NODE_TYPES.output ||
+         node.type === BOUNDARY_NODE_TYPES.prop;
 }
 
 /**
- * Get the boundary type from a node name
+ * Check if a node type string is a boundary node type
  */
-export function getBoundaryType(name: string): BoundaryNodeType | null {
-  if (name.startsWith(BOUNDARY_PREFIXES.input)) return 'input';
-  if (name.startsWith(BOUNDARY_PREFIXES.output)) return 'output';
-  if (name.startsWith(BOUNDARY_PREFIXES.prop)) return 'prop';
+export function isBoundaryNodeType(type: string): boolean {
+  return type === BOUNDARY_NODE_TYPES.input ||
+         type === BOUNDARY_NODE_TYPES.output ||
+         type === BOUNDARY_NODE_TYPES.prop;
+}
+
+/**
+ * Get the boundary type from a node's type property
+ */
+export function getBoundaryType(node: { type: string }): BoundaryNodeType | null {
+  if (node.type === BOUNDARY_NODE_TYPES.input) return 'input';
+  if (node.type === BOUNDARY_NODE_TYPES.output) return 'output';
+  if (node.type === BOUNDARY_NODE_TYPES.prop) return 'prop';
   return null;
 }
 
 /**
- * Get the port name from a boundary node name
- * e.g., "@in:input1" -> "input1"
+ * Get the port/prop name from a boundary node's properties
+ * Reads from 'portName' property for inputs/outputs, 'propName' for props
  */
-export function getPortNameFromBoundary(name: string): string | null {
-  const type = getBoundaryType(name);
-  if (!type) return null;
-  return name.slice(BOUNDARY_PREFIXES[type].length);
+export function getPortNameFromBoundary(node: { type: string; props?: Array<{ name: string; value?: unknown }> }): string | null {
+  const boundaryType = getBoundaryType(node);
+  if (!boundaryType) return null;
+  
+  const propName = boundaryType === 'prop' ? 'propName' : 'portName';
+  const prop = node.props?.find(p => p.name === propName);
+  return prop?.value as string | null;
+}
+
+/**
+ * Get the data type from a boundary node's properties
+ */
+export function getDataTypeFromBoundary(node: { props?: Array<{ name: string; value?: unknown }> }): string {
+  const prop = node.props?.find(p => p.name === 'dataType');
+  return (prop?.value as string) || 'any';
+}
+
+/**
+ * Get the default value from a boundary node's properties (for props)
+ */
+export function getDefaultFromBoundary(node: { props?: Array<{ name: string; value?: unknown }> }): unknown {
+  const prop = node.props?.find(p => p.name === 'default');
+  return prop?.value;
 }
 
 // =============================================================================

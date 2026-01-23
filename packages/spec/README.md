@@ -156,7 +156,7 @@ interface PropValue {
 
 **Required fields:** `name`
 
-**References:** When `ref: true`, the `value` is interpreted as a path reference (e.g., `"@prop:threshold"`) that resolves at runtime.
+**References:** When `ref: true`, the `value` is interpreted as a path reference that resolves at runtime.
 
 ### NodeMeta
 

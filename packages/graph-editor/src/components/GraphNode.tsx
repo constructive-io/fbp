@@ -3,18 +3,19 @@ import { useGraph, useSelection, useNavigation } from '../context/GraphContext';
 import type { Node, Port } from '@fbp/types';
 import { clsx } from 'clsx';
 import { NodeIconSvg } from './NodeIcon';
+import { BOUNDARY_NODE_TYPES, getPortNameFromBoundary, getDataTypeFromBoundary } from '../types';
 
 // Derive ports from boundary nodes inside a subnet (ensures ports are always in sync)
+// Boundary nodes are identified by their type property (graphInput, graphOutput, graphProp)
+// Port names are read from the portName property
 // Exported so GraphEdge can also use it for port position lookups
 export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Port[] {
-  const prefix = type === 'input' ? '@in:' : '@out:';
+  const nodeType = type === 'input' ? BOUNDARY_NODE_TYPES.input : BOUNDARY_NODE_TYPES.output;
   return nodes
-    .filter(n => n.name.startsWith(prefix))
+    .filter(n => n.type === nodeType)
     .map(n => {
-      const portName = n.name.slice(prefix.length);
-      // Get valueType from the boundary node's props if set
-      const valueTypeProp = n.props?.find(p => p.name === 'valueType');
-      const portType = (valueTypeProp?.value as string) || 'any';
+      const portName = getPortNameFromBoundary(n) || n.name;
+      const portType = getDataTypeFromBoundary(n);
       return { name: portName, type: portType };
     });
 }

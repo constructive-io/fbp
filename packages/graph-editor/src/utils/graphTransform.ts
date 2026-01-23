@@ -3,7 +3,10 @@
  * 
  * Handles conversion between storage format and runtime format.
  * 
- * Storage format: Boundary nodes (@in:@out:@prop) ARE the interface definition.
+ * Storage format: Boundary nodes ARE the interface definition.
+ *                 - Boundary nodes have normal keys (e.g., 'input_a', 'output_result')
+ *                 - The node's `type` property identifies it: 'graphInput', 'graphOutput', 'graphProp'
+ *                 - Port/prop names stored as properties: { name: 'portName', value: 'a' }
  *                 No redundant inputs/outputs/props arrays.
  * 
  * Runtime format: inputs/outputs/props are DERIVED from boundary nodes.
@@ -16,7 +19,7 @@
  */
 
 import type { Graph, Node, Edge, Port, PropDefinition } from '@fbp/types';
-import { BOUNDARY_PREFIXES, getPortNameFromBoundary, getBoundaryType } from '../types';
+import { BOUNDARY_NODE_TYPES, getPortNameFromBoundary, getBoundaryType, getDataTypeFromBoundary, getDefaultFromBoundary } from '../types';
 
 // =============================================================================
 // DERIVE PORTS FROM BOUNDARY NODES
@@ -26,44 +29,49 @@ import { BOUNDARY_PREFIXES, getPortNameFromBoundary, getBoundaryType } from '../
  * Derive input/output ports from boundary nodes in a node list.
  * This is the single source of truth for port definitions.
  * 
- * @param nodes - List of nodes (may include @in:@out:@prop boundary nodes)
+ * Boundary nodes are identified by their `type` property:
+ * - 'graphInput' for input ports
+ * - 'graphOutput' for output ports
+ * 
+ * The port name is read from the 'portName' property.
+ * 
+ * @param nodes - List of nodes (may include graphInput/graphOutput boundary nodes)
  * @param type - Which type of ports to derive ('input' or 'output')
  * @returns Array of Port definitions derived from boundary nodes
  */
 export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Port[] {
-  const prefix = type === 'input' ? BOUNDARY_PREFIXES.input : BOUNDARY_PREFIXES.output;
+  const nodeType = type === 'input' ? BOUNDARY_NODE_TYPES.input : BOUNDARY_NODE_TYPES.output;
   
   return nodes
-    .filter(n => n.name.startsWith(prefix))
+    .filter(n => n.type === nodeType)
     .map(n => {
-      const portName = n.name.slice(prefix.length);
-      // Get valueType from the boundary node's props if set
-      const valueTypeProp = n.props?.find(p => p.name === 'valueType');
-      const portType = (valueTypeProp?.value as string) || 'any';
+      const portName = getPortNameFromBoundary(n) || n.name;
+      const portType = getDataTypeFromBoundary(n);
       return { name: portName, type: portType };
     })
     .sort((a, b) => a.name.localeCompare(b.name)); // Stable ordering
 }
 
 /**
- * Derive prop definitions from @prop: boundary nodes.
+ * Derive prop definitions from graphProp boundary nodes.
  * 
- * @param nodes - List of nodes (may include @prop: boundary nodes)
+ * Boundary nodes are identified by their `type` property being 'graphProp'.
+ * The prop name is read from the 'propName' property.
+ * 
+ * @param nodes - List of nodes (may include graphProp boundary nodes)
  * @returns Array of PropDefinition derived from boundary nodes
  */
 export function deriveBoundaryProps(nodes: Node[]): PropDefinition[] {
-  const prefix = BOUNDARY_PREFIXES.prop;
-  
   return nodes
-    .filter(n => n.name.startsWith(prefix))
+    .filter(n => n.type === BOUNDARY_NODE_TYPES.prop)
     .map(n => {
-      const propName = n.name.slice(prefix.length);
-      const valueTypeProp = n.props?.find(p => p.name === 'valueType');
-      const defaultProp = n.props?.find(p => p.name === 'default');
+      const propName = getPortNameFromBoundary(n) || n.name;
+      const propType = getDataTypeFromBoundary(n);
+      const defaultValue = getDefaultFromBoundary(n);
       return {
         name: propName,
-        type: (valueTypeProp?.value as string) || 'any',
-        default: defaultProp?.value,
+        type: propType,
+        default: defaultValue,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name)); // Stable ordering
@@ -249,9 +257,9 @@ export function updateEdgesAtScope(
  * This is called when loading a graph to ensure runtime format.
  * 
  * For the root graph and all subnets, this:
- * 1. Derives inputs from @in: boundary nodes
- * 2. Derives outputs from @out: boundary nodes
- * 3. Derives props from @prop: boundary nodes
+ * 1. Derives inputs from graphInput boundary nodes
+ * 2. Derives outputs from graphOutput boundary nodes
+ * 3. Derives props from graphProp boundary nodes
  */
 export function ensureDerivedPorts(graph: Graph): Graph {
   // Derive root-level ports from boundary nodes
@@ -304,13 +312,17 @@ function ensureDerivedPortsOnNode(node: Node): Node {
  * This generates the boundary nodes from the port arrays.
  * 
  * After migration, the boundary nodes become the source of truth.
+ * 
+ * New boundary nodes use property-based naming:
+ * - Node keys are normal identifiers (e.g., 'input_a', 'output_result')
+ * - Port/prop names stored as properties: { name: 'portName', value: 'a' }
  */
 export function migrateLegacyGraph(graph: Graph): Graph {
   // Check if we need to migrate (has ports but no boundary nodes)
   const hasBoundaryNodes = graph.nodes.some(n => 
-    n.name.startsWith(BOUNDARY_PREFIXES.input) ||
-    n.name.startsWith(BOUNDARY_PREFIXES.output) ||
-    n.name.startsWith(BOUNDARY_PREFIXES.prop)
+    n.type === BOUNDARY_NODE_TYPES.input ||
+    n.type === BOUNDARY_NODE_TYPES.output ||
+    n.type === BOUNDARY_NODE_TYPES.prop
   );
   
   if (hasBoundaryNodes) {
@@ -321,43 +333,54 @@ export function migrateLegacyGraph(graph: Graph): Graph {
   // Generate boundary nodes from inputs/outputs/props
   const boundaryNodes: Node[] = [];
   
-  // Generate @in: nodes from inputs
+  // Generate graphInput nodes from inputs
   (graph.inputs || []).forEach((port, i) => {
+    const nodeProps: { name: string; type: string; value: unknown }[] = [
+      { name: 'portName', type: 'string', value: port.name }
+    ];
+    if (port.type && port.type !== 'any') {
+      nodeProps.push({ name: 'dataType', type: 'string', value: port.type });
+    }
     boundaryNodes.push({
-      name: `${BOUNDARY_PREFIXES.input}${port.name}`,
-      type: 'core/graph/input',
-      kind: 'graphInput',
+      name: `input_${port.name}`,
+      type: BOUNDARY_NODE_TYPES.input,
       meta: { x: 50, y: 50 + i * 100 },
-      props: port.type !== 'any' ? [{ name: 'valueType', type: 'string', value: port.type }] : [],
+      props: nodeProps,
     });
   });
   
-  // Generate @out: nodes from outputs
+  // Generate graphOutput nodes from outputs
   (graph.outputs || []).forEach((port, i) => {
+    const nodeProps: { name: string; type: string; value: unknown }[] = [
+      { name: 'portName', type: 'string', value: port.name }
+    ];
+    if (port.type && port.type !== 'any') {
+      nodeProps.push({ name: 'dataType', type: 'string', value: port.type });
+    }
     boundaryNodes.push({
-      name: `${BOUNDARY_PREFIXES.output}${port.name}`,
-      type: 'core/graph/output',
-      kind: 'graphOutput',
+      name: `output_${port.name}`,
+      type: BOUNDARY_NODE_TYPES.output,
       meta: { x: 500, y: 50 + i * 100 },
-      props: port.type !== 'any' ? [{ name: 'valueType', type: 'string', value: port.type }] : [],
+      props: nodeProps,
     });
   });
   
-  // Generate @prop: nodes from props
+  // Generate graphProp nodes from props
   (graph.props || []).forEach((prop, i) => {
-    const propNodes: { name: string; type: string; value: unknown }[] = [];
-    if (prop.type !== 'any') {
-      propNodes.push({ name: 'valueType', type: 'string', value: prop.type });
+    const nodeProps: { name: string; type: string; value: unknown }[] = [
+      { name: 'propName', type: 'string', value: prop.name }
+    ];
+    if (prop.type && prop.type !== 'any') {
+      nodeProps.push({ name: 'dataType', type: 'string', value: prop.type });
     }
     if (prop.default !== undefined) {
-      propNodes.push({ name: 'default', type: prop.type, value: prop.default });
+      nodeProps.push({ name: 'default', type: prop.type || 'any', value: prop.default });
     }
     boundaryNodes.push({
-      name: `${BOUNDARY_PREFIXES.prop}${prop.name}`,
-      type: 'core/graph/prop',
-      kind: 'graphProp',
+      name: `prop_${prop.name}`,
+      type: BOUNDARY_NODE_TYPES.prop,
       meta: { x: 50, y: 50 + (graph.inputs?.length || 0) * 100 + i * 100 },
-      props: propNodes,
+      props: nodeProps,
     });
   });
   
@@ -384,9 +407,9 @@ function migrateLegacyNode(node: Node): Node {
   
   // Check if subnet already has boundary nodes
   const hasBoundaryNodes = node.nodes.some(n => 
-    n.name.startsWith(BOUNDARY_PREFIXES.input) ||
-    n.name.startsWith(BOUNDARY_PREFIXES.output) ||
-    n.name.startsWith(BOUNDARY_PREFIXES.prop)
+    n.type === BOUNDARY_NODE_TYPES.input ||
+    n.type === BOUNDARY_NODE_TYPES.output ||
+    n.type === BOUNDARY_NODE_TYPES.prop
   );
   
   if (hasBoundaryNodes) {
@@ -401,22 +424,32 @@ function migrateLegacyNode(node: Node): Node {
   const boundaryNodes: Node[] = [];
   
   (node.inputs || []).forEach((port, i) => {
+    const nodeProps: { name: string; type: string; value: unknown }[] = [
+      { name: 'portName', type: 'string', value: port.name }
+    ];
+    if (port.type && port.type !== 'any') {
+      nodeProps.push({ name: 'dataType', type: 'string', value: port.type });
+    }
     boundaryNodes.push({
-      name: `${BOUNDARY_PREFIXES.input}${port.name}`,
-      type: 'core/graph/input',
-      kind: 'graphInput',
+      name: `input_${port.name}`,
+      type: BOUNDARY_NODE_TYPES.input,
       meta: { x: 50, y: 50 + i * 100 },
-      props: port.type !== 'any' ? [{ name: 'valueType', type: 'string', value: port.type }] : [],
+      props: nodeProps,
     });
   });
   
   (node.outputs || []).forEach((port, i) => {
+    const nodeProps: { name: string; type: string; value: unknown }[] = [
+      { name: 'portName', type: 'string', value: port.name }
+    ];
+    if (port.type && port.type !== 'any') {
+      nodeProps.push({ name: 'dataType', type: 'string', value: port.type });
+    }
     boundaryNodes.push({
-      name: `${BOUNDARY_PREFIXES.output}${port.name}`,
-      type: 'core/graph/output',
-      kind: 'graphOutput',
+      name: `output_${port.name}`,
+      type: BOUNDARY_NODE_TYPES.output,
       meta: { x: 500, y: 50 + i * 100 },
-      props: port.type !== 'any' ? [{ name: 'valueType', type: 'string', value: port.type }] : [],
+      props: nodeProps,
     });
   });
   

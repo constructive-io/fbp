@@ -451,6 +451,7 @@ export function findNodes(
 
 /**
  * Find all boundary nodes (inputs, outputs, props) at a scope.
+ * Uses type-based detection (node.type === 'graphInput', 'graphOutput', 'graphProp').
  * 
  * @param graph - The graph
  * @param scopePath - The scope to search
@@ -463,9 +464,9 @@ export function findBoundaryNodes(graph: Graph, scopePath: string): {
 } {
   const nodes = getNodes(graph, scopePath);
   return {
-    inputs: nodes.filter(n => n.name.startsWith('@in:')),
-    outputs: nodes.filter(n => n.name.startsWith('@out:')),
-    props: nodes.filter(n => n.name.startsWith('@prop:'))
+    inputs: nodes.filter(n => n.type === 'graphInput'),
+    outputs: nodes.filter(n => n.type === 'graphOutput'),
+    props: nodes.filter(n => n.type === 'graphProp')
   };
 }
 

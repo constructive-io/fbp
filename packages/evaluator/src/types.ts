@@ -38,8 +38,8 @@ export interface EvaluateOptions {
   outputNode: string;
   /** The port to get output from */
   outputPort: string;
-  /** External inputs to provide to @in: nodes */
+  /** External inputs to provide to graphInput nodes (keyed by portName property value) */
   inputs?: Record<string, any>;
-  /** Props to provide to @prop: nodes */
+  /** Props to provide to graphProp nodes (keyed by propName property value) */
   props?: Record<string, any>;
 }

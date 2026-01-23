@@ -58,9 +58,12 @@ export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<
       throw new Error(`Node not found: ${nodeName}`);
     }
 
-    // Handle special boundary nodes (@in:, @out:, @prop:)
-    if (nodeName.startsWith('@in:')) {
-      const inputName = nodeName.slice(4); // Remove '@in:' prefix
+    // Handle special boundary nodes (graphInput, graphOutput, graphProp)
+    // Boundary nodes are identified by their type property, not by name prefix
+    if (node.type === 'graphInput') {
+      // Get the port name from the portName property
+      const portNameProp = node.props?.find(p => p.name === 'portName');
+      const inputName = (portNameProp?.value as string) || nodeName;
       // Check external inputs first, then fall back to node's default prop
       let value = inputs[inputName];
       if (value === undefined) {
@@ -72,8 +75,10 @@ export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<
       return result;
     }
 
-    if (nodeName.startsWith('@prop:')) {
-      const propName = nodeName.slice(6); // Remove '@prop:' prefix
+    if (node.type === 'graphProp') {
+      // Get the prop name from the propName property
+      const propNameProp = node.props?.find(p => p.name === 'propName');
+      const propName = (propNameProp?.value as string) || nodeName;
       const value = props[propName];
       const result = { value };
       cache.set(nodeName, result);
@@ -102,8 +107,16 @@ export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<
       
       if (node.outputs) {
         for (const outputPort of node.outputs) {
-          // The output boundary node name is @out:<portName>
-          const outputNodeName = `@out:${outputPort.name}`;
+          // Find the graphOutput boundary node by matching portName property
+          const outputBoundaryNode = node.nodes.find(n => {
+            if (n.type !== 'graphOutput') return false;
+            const portNameProp = n.props?.find(p => p.name === 'portName');
+            return (portNameProp?.value as string) === outputPort.name;
+          });
+          
+          if (!outputBoundaryNode) {
+            throw new Error(`Output boundary node not found for port: ${outputPort.name}`);
+          }
           
           // Recursively evaluate the subnet's internal graph
           const subnetResult = await evaluate(
@@ -114,7 +127,7 @@ export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<
             },
             {
               definitions,
-              outputNode: outputNodeName,
+              outputNode: outputBoundaryNode.name,
               outputPort: 'value',
               inputs: subnetInputs
             }

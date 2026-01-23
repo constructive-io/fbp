@@ -211,12 +211,12 @@ const examples: Record<string, Graph> = {
       { name: 'num1', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 100 } },
       { name: 'num2', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
       { name: 'add', type: 'js/math/add', meta: { x: 350, y: 150 } },
-      { name: '@out:result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 550, y: 150 } }
+      { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 550, y: 150 } }
     ],
     edges: [
       { src: { node: 'num1', port: 'value' }, dst: { node: 'add', port: 'a' } },
       { src: { node: 'num2', port: 'value' }, dst: { node: 'add', port: 'b' } },
-      { src: { node: 'add', port: 'sum' }, dst: { node: '@out:result', port: 'value' } }
+      { src: { node: 'add', port: 'sum' }, dst: { node: 'output_result', port: 'value' } }
     ]
   },
   'Chained Math ((2 + 3) * 4 = 20)': {
@@ -228,14 +228,14 @@ const examples: Record<string, Graph> = {
       { name: 'num3', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 4 }], meta: { x: 100, y: 400 } },
       { name: 'add', type: 'js/math/add', meta: { x: 350, y: 150 } },
       { name: 'multiply', type: 'js/math/multiply', meta: { x: 600, y: 200 } },
-      { name: '@out:result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 850, y: 200 } }
+      { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 850, y: 200 } }
     ],
     edges: [
       { src: { node: 'num1', port: 'value' }, dst: { node: 'add', port: 'a' } },
       { src: { node: 'num2', port: 'value' }, dst: { node: 'add', port: 'b' } },
       { src: { node: 'add', port: 'sum' }, dst: { node: 'multiply', port: 'a' } },
       { src: { node: 'num3', port: 'value' }, dst: { node: 'multiply', port: 'b' } },
-      { src: { node: 'multiply', port: 'product' }, dst: { node: '@out:result', port: 'value' } }
+      { src: { node: 'multiply', port: 'product' }, dst: { node: 'output_result', port: 'value' } }
     ]
   },
   'Simple Page': {
@@ -251,10 +251,10 @@ const examples: Record<string, Graph> = {
         ],
         meta: { x: 300, y: 150 }
       },
-      { name: '@out:result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 550, y: 150 } }
+      { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 550, y: 150 } }
     ],
     edges: [
-      { src: { node: 'page', port: 'element' }, dst: { node: '@out:result', port: 'value' } }
+      { src: { node: 'page', port: 'element' }, dst: { node: 'output_result', port: 'value' } }
     ]
   },
   'Form with Children': {
@@ -291,12 +291,12 @@ const examples: Record<string, Graph> = {
         ],
         meta: { x: 100, y: 300 }
       },
-      { name: '@out:result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 750, y: 200 } }
+      { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 750, y: 200 } }
     ],
     edges: [
       { src: { node: 'emailInput', port: 'element' }, dst: { node: 'form', port: 'children' } },
       { src: { node: 'submitButton', port: 'element' }, dst: { node: 'form', port: 'children' } },
-      { src: { node: 'form', port: 'element' }, dst: { node: '@out:result', port: 'value' } }
+      { src: { node: 'form', port: 'element' }, dst: { node: 'output_result', port: 'value' } }
     ]
   },
   'Newsletter Page': {
@@ -342,13 +342,13 @@ const examples: Record<string, Graph> = {
         ],
         meta: { x: 100, y: 300 }
       },
-      { name: '@out:result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 950, y: 200 } }
+      { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 950, y: 200 } }
     ],
     edges: [
       { src: { node: 'emailInput', port: 'element' }, dst: { node: 'form', port: 'children' } },
       { src: { node: 'submitButton', port: 'element' }, dst: { node: 'form', port: 'children' } },
       { src: { node: 'form', port: 'element' }, dst: { node: 'page', port: 'children' } },
-      { src: { node: 'page', port: 'element' }, dst: { node: '@out:result', port: 'value' } }
+      { src: { node: 'page', port: 'element' }, dst: { node: 'output_result', port: 'value' } }
     ]
   },
   'Subgraph Example (Math in Subnet)': {
@@ -365,59 +365,59 @@ const examples: Record<string, Graph> = {
         outputs: [{ name: 'result', type: 'number' }],
         meta: { x: 350, y: 200 },
         nodes: [
-          { name: '@in:a', type: 'core/graph/input', kind: 'graphInput', meta: { x: 50, y: 100 } },
-          { name: '@in:b', type: 'core/graph/input', kind: 'graphInput', meta: { x: 50, y: 250 } },
+          { name: 'input_a', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'a' }], meta: { x: 50, y: 100 } },
+          { name: 'input_b', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'b' }], meta: { x: 50, y: 250 } },
           { name: 'add', type: 'js/math/add', meta: { x: 250, y: 150 } },
           { name: 'double', type: 'js/math/multiply', meta: { x: 450, y: 150 } },
           { name: 'two', type: 'js/const/number', props: [{ name: 'value', type: 'number', value: 2 }], meta: { x: 250, y: 300 } },
-          { name: '@out:result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 650, y: 150 } }
+          { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 650, y: 150 } }
         ],
         edges: [
-          { src: { node: '@in:a', port: 'value' }, dst: { node: 'add', port: 'a' } },
-          { src: { node: '@in:b', port: 'value' }, dst: { node: 'add', port: 'b' } },
+          { src: { node: 'input_a', port: 'value' }, dst: { node: 'add', port: 'a' } },
+          { src: { node: 'input_b', port: 'value' }, dst: { node: 'add', port: 'b' } },
           { src: { node: 'add', port: 'sum' }, dst: { node: 'double', port: 'a' } },
           { src: { node: 'two', port: 'value' }, dst: { node: 'double', port: 'b' } },
-          { src: { node: 'double', port: 'product' }, dst: { node: '@out:result', port: 'value' } }
+          { src: { node: 'double', port: 'product' }, dst: { node: 'output_result', port: 'value' } }
         ]
       },
-      { name: '@out:result', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 600, y: 200 } }
+      { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 600, y: 200 } }
     ],
     edges: [
       { src: { node: 'input1', port: 'value' }, dst: { node: 'mathSubnet', port: 'a' } },
       { src: { node: 'input2', port: 'value' }, dst: { node: 'mathSubnet', port: 'b' } },
-      { src: { node: 'mathSubnet', port: 'result' }, dst: { node: '@out:result', port: 'value' } }
+      { src: { node: 'mathSubnet', port: 'result' }, dst: { node: 'output_result', port: 'value' } }
     ]
   },
   'GraphQL Login (Extract Token)': {
     name: 'graphql-login',
     definitions: allDefinitions,
     nodes: [
-      // Input nodes for credentials
+      // Input nodes for credentials (property-based naming)
       { 
-        name: '@in:email', 
-        type: 'core/graph/input', 
-        kind: 'graphInput',
+        name: 'input_email', 
+        type: 'graphInput',
         props: [
+          { name: 'portName', type: 'string', value: 'email' },
           { name: 'valueType', type: 'string', value: 'string' },
           { name: 'default', type: 'string', value: 'user@example.com' }
         ],
         meta: { x: 50, y: 50 } 
       },
       { 
-        name: '@in:password', 
-        type: 'core/graph/input', 
-        kind: 'graphInput',
+        name: 'input_password', 
+        type: 'graphInput',
         props: [
+          { name: 'portName', type: 'string', value: 'password' },
           { name: 'valueType', type: 'string', value: 'string' },
           { name: 'default', type: 'string', value: 'password123' }
         ],
         meta: { x: 50, y: 150 } 
       },
       { 
-        name: '@in:rememberMe', 
-        type: 'core/graph/input', 
-        kind: 'graphInput',
+        name: 'input_rememberMe', 
+        type: 'graphInput',
         props: [
+          { name: 'portName', type: 'string', value: 'rememberMe' },
           { name: 'valueType', type: 'string', value: 'boolean' },
           { name: 'default', type: 'boolean', value: true }
         ],
@@ -477,17 +477,17 @@ const examples: Record<string, Graph> = {
         props: [{ name: 'path', type: 'string', value: 'login.apiToken.id' }],
         meta: { x: 800, y: 350 }
       },
-      // Output nodes
-      { name: '@out:accessToken', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 50 } },
-      { name: '@out:expiresAt', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 150 } },
-      { name: '@out:userId', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 250 } },
-      { name: '@out:tokenId', type: 'core/graph/output', kind: 'graphOutput', meta: { x: 1050, y: 350 } }
+      // Output nodes (property-based naming)
+      { name: 'output_accessToken', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'accessToken' }], meta: { x: 1050, y: 50 } },
+      { name: 'output_expiresAt', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'expiresAt' }], meta: { x: 1050, y: 150 } },
+      { name: 'output_userId', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'userId' }], meta: { x: 1050, y: 250 } },
+      { name: 'output_tokenId', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'tokenId' }], meta: { x: 1050, y: 350 } }
     ],
     edges: [
       // Connect inputs to variables builder
-      { src: { node: '@in:email', port: 'value' }, dst: { node: 'buildVariables', port: 'email' } },
-      { src: { node: '@in:password', port: 'value' }, dst: { node: 'buildVariables', port: 'password' } },
-      { src: { node: '@in:rememberMe', port: 'value' }, dst: { node: 'buildVariables', port: 'rememberMe' } },
+      { src: { node: 'input_email', port: 'value' }, dst: { node: 'buildVariables', port: 'email' } },
+      { src: { node: 'input_password', port: 'value' }, dst: { node: 'buildVariables', port: 'password' } },
+      { src: { node: 'input_rememberMe', port: 'value' }, dst: { node: 'buildVariables', port: 'rememberMe' } },
       // Connect variables to GraphQL request
       { src: { node: 'buildVariables', port: 'value' }, dst: { node: 'loginRequest', port: 'variables' } },
       // Connect response data to selectors
@@ -496,10 +496,10 @@ const examples: Record<string, Graph> = {
       { src: { node: 'loginRequest', port: 'data' }, dst: { node: 'selectUserId', port: 'obj' } },
       { src: { node: 'loginRequest', port: 'data' }, dst: { node: 'selectTokenId', port: 'obj' } },
       // Connect selectors to outputs
-      { src: { node: 'selectAccessToken', port: 'value' }, dst: { node: '@out:accessToken', port: 'value' } },
-      { src: { node: 'selectExpiresAt', port: 'value' }, dst: { node: '@out:expiresAt', port: 'value' } },
-      { src: { node: 'selectUserId', port: 'value' }, dst: { node: '@out:userId', port: 'value' } },
-      { src: { node: 'selectTokenId', port: 'value' }, dst: { node: '@out:tokenId', port: 'value' } }
+      { src: { node: 'selectAccessToken', port: 'value' }, dst: { node: 'output_accessToken', port: 'value' } },
+      { src: { node: 'selectExpiresAt', port: 'value' }, dst: { node: 'output_expiresAt', port: 'value' } },
+      { src: { node: 'selectUserId', port: 'value' }, dst: { node: 'output_userId', port: 'value' } },
+      { src: { node: 'selectTokenId', port: 'value' }, dst: { node: 'output_tokenId', port: 'value' } }
     ]
   }
 };
