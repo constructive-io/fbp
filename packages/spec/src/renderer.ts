@@ -206,5 +206,4 @@ export type {
   PropValue,
   NodeDefinition,
   NodeMeta,
-  DefinitionLibrary,
 } from './types';
