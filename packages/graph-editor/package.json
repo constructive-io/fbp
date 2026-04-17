@@ -6,7 +6,7 @@
   "main": "index.js",
   "module": "esm/index.js",
   "types": "index.d.ts",
-  "homepage": "https://github.com/constructive-io/fbp",
+  "homepage": "https://github.com/flow-based-programming/spec",
   "license": "MIT",
   "publishConfig": {
     "access": "public",
@@ -14,10 +14,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/constructive-io/fbp"
+    "url": "https://github.com/flow-based-programming/spec"
   },
   "bugs": {
-    "url": "https://github.com/constructive-io/fbp/issues"
+    "url": "https://github.com/flow-based-programming/spec/issues"
   },
   "scripts": {
     "clean": "makage clean",

@@ -7,4 +7,4 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-- add @fbp/spec package with storage schema and path-based API ([2bb0070](https://github.com/constructive-io/fbp/commit/2bb0070d7a158bac6157db2905bf7035a21ef248))
+- add @fbp/spec package with storage schema and path-based API ([2bb0070](https://github.com/flow-based-programming/spec/commit/2bb0070d7a158bac6157db2905bf7035a21ef248))
