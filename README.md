@@ -7,8 +7,8 @@
 Flow-Based Programming TypeScript utilities for the Interweb
 
 <p align="center" width="100%">
-  <a href="https://github.com/flow-based-programming/spec/actions/workflows/ci.yml">
-    <img height="20" src="https://github.com/flow-based-programming/spec/actions/workflows/ci.yml/badge.svg" />
+  <a href="https://github.com/flow-based-programming/spec/actions/workflows/run-tests.yaml">
+    <img height="20" src="https://github.com/flow-based-programming/spec/actions/workflows/run-tests.yaml/badge.svg" />
   </a>
 </p>
 
