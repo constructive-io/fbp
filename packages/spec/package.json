@@ -1,6 +1,6 @@
 {
   "name": "@fbp/spec",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "author": "Dan Lynch <pyramation@gmail.com>",
   "description": "Storage specification and API for flow-based programming graphs",
   "main": "index.js",
