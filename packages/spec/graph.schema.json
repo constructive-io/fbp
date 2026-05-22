@@ -135,7 +135,8 @@
       "description": "A port definition on a node type.",
       "properties": {
         "name": { "type": "string", "minLength": 1 },
-        "type": { "type": "string", "description": "Data type (e.g., 'string', 'number', 'any')." },
+        "type": { "type": "string", "description": "Data type shorthand (e.g., 'string', 'number', 'boolean', 'json', 'any', 'Element', 'signal')." },
+        "schema": { "type": "object", "description": "Optional JSON Schema for structured type validation. Use when the simple type string is insufficient (e.g., typed object shapes, enums, unions)." },
         "multi": { "type": "boolean", "description": "If true, accepts multiple connections." },
         "description": { "type": "string" }
       },
@@ -148,7 +149,8 @@
       "description": "A property definition on a node type.",
       "properties": {
         "name": { "type": "string", "minLength": 1 },
-        "type": { "type": "string" },
+        "type": { "type": "string", "description": "Data type shorthand (e.g., 'string', 'number', 'boolean', 'json', 'any')." },
+        "schema": { "type": "object", "description": "Optional JSON Schema for structured type validation." },
         "default": { "description": "Default value." },
         "description": { "type": "string" }
       },

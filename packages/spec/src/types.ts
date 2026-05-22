@@ -37,12 +37,14 @@ export interface Graph {
 export interface PortDef {
   name: string;
   type?: string;
+  schema?: Record<string, any>;
   multi?: boolean;
   description?: string;
 }
 export interface PropDef {
   name: string;
   type?: string;
+  schema?: Record<string, any>;
   default?: any;
   description?: string;
 }

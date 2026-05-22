@@ -7,6 +7,7 @@ export interface Metadata {
 export interface Port {
   name: string;
   type: string;
+  schema?: Record<string, any>;
   description?: string;
   optional?: boolean;
   multi?: boolean;
@@ -23,6 +24,7 @@ export interface Prop {
 export interface PropDefinition {
   name: string;
   type: string;
+  schema?: Record<string, any>;
   default?: any;
   description?: string;
   required?: boolean;
