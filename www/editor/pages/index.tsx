@@ -206,6 +206,7 @@ const uiDefinitions: NodeDefinitionWithImpl[] = [
 const examples: Record<string, Graph> = {
   'Simple Add (5 + 3 = 8)': {
     name: 'simple-add',
+    context: 'js',
     definitions: allDefinitions,
     nodes: [
       { name: 'num1', type: 'number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 100 } },
@@ -221,6 +222,7 @@ const examples: Record<string, Graph> = {
   },
   'Chained Math ((2 + 3) * 4 = 20)': {
     name: 'chained-math',
+    context: 'js',
     definitions: allDefinitions,
     nodes: [
       { name: 'num1', type: 'number', props: [{ name: 'value', type: 'number', value: 2 }], meta: { x: 100, y: 100 } },
@@ -240,6 +242,7 @@ const examples: Record<string, Graph> = {
   },
   'Simple Page': {
     name: 'simple-page',
+    context: 'js',
     definitions: allDefinitions,
     nodes: [
       { 
@@ -259,6 +262,7 @@ const examples: Record<string, Graph> = {
   },
   'Form with Children': {
     name: 'form-with-children',
+    context: 'js',
     definitions: allDefinitions,
     nodes: [
       { 
@@ -301,6 +305,7 @@ const examples: Record<string, Graph> = {
   },
   'Newsletter Page': {
     name: 'newsletter-page',
+    context: 'js',
     definitions: allDefinitions,
     nodes: [
       { 
@@ -353,6 +358,7 @@ const examples: Record<string, Graph> = {
   },
   'Subgraph Example (Math in Subnet)': {
     name: 'subgraph-math',
+    context: 'js',
     definitions: allDefinitions,
     nodes: [
       { name: 'input1', type: 'number', props: [{ name: 'value', type: 'number', value: 10 }], meta: { x: 100, y: 150 } },
@@ -389,6 +395,7 @@ const examples: Record<string, Graph> = {
   },
   'GraphQL Login (Extract Token)': {
     name: 'graphql-login',
+    context: 'js',
     definitions: allDefinitions,
     nodes: [
       // Input nodes for credentials (property-based naming)
@@ -499,6 +506,68 @@ const examples: Record<string, Graph> = {
       { src: { node: 'selectExpiresAt', port: 'value' }, dst: { node: 'output_expiresAt', port: 'value' } },
       { src: { node: 'selectUserId', port: 'value' }, dst: { node: 'output_userId', port: 'value' } },
       { src: { node: 'selectTokenId', port: 'value' }, dst: { node: 'output_tokenId', port: 'value' } }
+    ]
+  },
+  'Digital Asset (Weighted Add: 5*0.7 + 3*0.3 = 4.4)': {
+    name: 'digital-asset-weighted-add',
+    context: 'js',
+    definitions: [
+      ...allDefinitions,
+      // Digital asset: weighted-add is defined by an internal graph
+      {
+        context: 'js',
+        name: 'weightedAdd',
+        category: 'math',
+        inputs: [{ name: 'a', type: 'number' }, { name: 'b', type: 'number' }],
+        outputs: [{ name: 'result', type: 'number' }],
+        props: [
+          { name: 'weight_a', type: 'number', default: 1.0 },
+          { name: 'weight_b', type: 'number', default: 1.0 }
+        ],
+        description: 'Weighted addition: (a * weight_a) + (b * weight_b)',
+        graph: {
+          name: 'weightedAdd-internal',
+          context: 'js',
+          nodes: [
+            { name: 'in_a', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'a' }] },
+            { name: 'in_b', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'b' }] },
+            { name: 'p_wa', type: 'graphProp', props: [{ name: 'propName', type: 'string', value: 'weight_a' }] },
+            { name: 'p_wb', type: 'graphProp', props: [{ name: 'propName', type: 'string', value: 'weight_b' }] },
+            { name: 'mul_a', type: 'multiply' },
+            { name: 'mul_b', type: 'multiply' },
+            { name: 'sum', type: 'add' },
+            { name: 'out', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
+          ],
+          edges: [
+            { src: { node: 'in_a', port: 'value' }, dst: { node: 'mul_a', port: 'a' } },
+            { src: { node: 'p_wa', port: 'value' }, dst: { node: 'mul_a', port: 'b' } },
+            { src: { node: 'in_b', port: 'value' }, dst: { node: 'mul_b', port: 'a' } },
+            { src: { node: 'p_wb', port: 'value' }, dst: { node: 'mul_b', port: 'b' } },
+            { src: { node: 'mul_a', port: 'product' }, dst: { node: 'sum', port: 'a' } },
+            { src: { node: 'mul_b', port: 'product' }, dst: { node: 'sum', port: 'b' } },
+            { src: { node: 'sum', port: 'sum' }, dst: { node: 'out', port: 'value' } }
+          ]
+        }
+      }
+    ],
+    nodes: [
+      { name: 'num_a', type: 'number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 100 } },
+      { name: 'num_b', type: 'number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
+      { 
+        name: 'weighted', 
+        type: 'weightedAdd',
+        props: [
+          { name: 'weight_a', type: 'number', value: 0.7 },
+          { name: 'weight_b', type: 'number', value: 0.3 }
+        ],
+        meta: { x: 350, y: 150 }
+      },
+      { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 600, y: 150 } }
+    ],
+    edges: [
+      { src: { node: 'num_a', port: 'value' }, dst: { node: 'weighted', port: 'a' } },
+      { src: { node: 'num_b', port: 'value' }, dst: { node: 'weighted', port: 'b' } },
+      { src: { node: 'weighted', port: 'result' }, dst: { node: 'output_result', port: 'value' } }
     ]
   }
 };

@@ -89,6 +89,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
   const scopedGraph = useMemo((): Graph => {
     return {
       name: state.cwd === '/' ? state.graph.name : `scope:${state.cwd}`,
+      context: state.graph.context,
       nodes: scopedNodes,
       edges: scopedEdges,
       inputs: state.graph.inputs,
@@ -96,7 +97,7 @@ export function PropertiesPanel({ evaluationResult: externalResult, onRefreshEva
       props: state.graph.props,
       definitions: state.graph.definitions
     };
-  }, [state.cwd, state.graph.name, state.graph.inputs, state.graph.outputs, state.graph.props, state.graph.definitions, scopedNodes, scopedEdges]);
+  }, [state.cwd, state.graph.name, state.graph.context, state.graph.inputs, state.graph.outputs, state.graph.props, state.graph.definitions, scopedNodes, scopedEdges]);
   
   // Evaluate when output node is selected and we have evaluateFn
   const handleEvaluate = useCallback(async () => {
