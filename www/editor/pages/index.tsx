@@ -29,7 +29,7 @@ function coerceValue(value: any, valueType: string): any {
 const graphInputDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'graph',
-  name: 'graph/input',
+  name: 'graphInput',
   inputs: [],
   outputs: [{ name: 'value', type: 'any' }],
   props: [
@@ -43,7 +43,7 @@ const graphInputDef: NodeDefinitionWithImpl = {
 const graphOutputDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'graph',
-  name: 'graph/output',
+  name: 'graphOutput',
   inputs: [{ name: 'value', type: 'any' }],
   outputs: [{ name: 'value', type: 'any' }],
   props: [
@@ -56,7 +56,7 @@ const graphOutputDef: NodeDefinitionWithImpl = {
 const graphPropDef: NodeDefinitionWithImpl = {
   context: 'core',
   category: 'graph',
-  name: 'graph/prop',
+  name: 'graphProp',
   inputs: [],
   outputs: [{ name: 'value', type: 'any' }],
   props: [
@@ -71,7 +71,7 @@ const mathDefinitions: NodeDefinitionWithImpl[] = [
   {
     context: 'js',
     category: 'const',
-    name: 'const/number',
+    name: 'number',
     outputs: [{ name: 'value', type: 'number' }],
     props: [
       { name: 'value', type: 'number', default: 0, description: 'The constant value' }
@@ -117,7 +117,7 @@ const uiDefinitions: NodeDefinitionWithImpl[] = [
   {
     context: 'ui',
     category: 'layout',
-    name: 'layout/Page',
+    name: 'Page',
     inputs: [{ name: 'children', type: 'Element[]', multi: true }],
     outputs: [{ name: 'element', type: 'Element' }],
     props: [
@@ -136,7 +136,7 @@ const uiDefinitions: NodeDefinitionWithImpl[] = [
   {
     context: 'ui',
     category: 'form',
-    name: 'form/Form',
+    name: 'Form',
     inputs: [{ name: 'children', type: 'Element[]', multi: true }],
     outputs: [{ name: 'element', type: 'Element' }],
     props: [
@@ -155,7 +155,7 @@ const uiDefinitions: NodeDefinitionWithImpl[] = [
   {
     context: 'ui',
     category: 'form',
-    name: 'form/Input',
+    name: 'Input',
     inputs: [],
     outputs: [{ name: 'element', type: 'Element' }],
     props: [
@@ -179,7 +179,7 @@ const uiDefinitions: NodeDefinitionWithImpl[] = [
   {
     context: 'ui',
     category: 'form',
-    name: 'form/Button',
+    name: 'Button',
     inputs: [],
     outputs: [{ name: 'element', type: 'Element' }],
     props: [
@@ -208,8 +208,8 @@ const examples: Record<string, Graph> = {
     name: 'simple-add',
     definitions: allDefinitions,
     nodes: [
-      { name: 'num1', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 100 } },
-      { name: 'num2', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
+      { name: 'num1', definition: 'number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 100 } },
+      { name: 'num2', definition: 'number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
       { name: 'add', definition: 'add', meta: { x: 350, y: 150 } },
       { name: 'output_result', definition: 'graphOutput', kind: 'graphOutput' as any, props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 550, y: 150 } }
     ],
@@ -223,9 +223,9 @@ const examples: Record<string, Graph> = {
     name: 'chained-math',
     definitions: allDefinitions,
     nodes: [
-      { name: 'num1', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 2 }], meta: { x: 100, y: 100 } },
-      { name: 'num2', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
-      { name: 'num3', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 4 }], meta: { x: 100, y: 400 } },
+      { name: 'num1', definition: 'number', props: [{ name: 'value', type: 'number', value: 2 }], meta: { x: 100, y: 100 } },
+      { name: 'num2', definition: 'number', props: [{ name: 'value', type: 'number', value: 3 }], meta: { x: 100, y: 250 } },
+      { name: 'num3', definition: 'number', props: [{ name: 'value', type: 'number', value: 4 }], meta: { x: 100, y: 400 } },
       { name: 'add', definition: 'add', meta: { x: 350, y: 150 } },
       { name: 'multiply', definition: 'multiply', meta: { x: 600, y: 200 } },
       { name: 'output_result', definition: 'graphOutput', kind: 'graphOutput' as any, props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 850, y: 200 } }
@@ -244,7 +244,7 @@ const examples: Record<string, Graph> = {
     nodes: [
       { 
         name: 'page', 
-        definition: 'layout/Page', 
+        definition: 'Page', 
         props: [
           { name: 'key', type: 'string', value: 'home' },
           { name: 'className', type: 'string', value: 'min-h-screen' }
@@ -263,7 +263,7 @@ const examples: Record<string, Graph> = {
     nodes: [
       { 
         name: 'form', 
-        definition: 'form/Form', 
+        definition: 'Form', 
         props: [
           { name: 'key', type: 'string', value: 'myForm' },
           { name: 'className', type: 'string', value: 'flex gap-4' }
@@ -272,7 +272,7 @@ const examples: Record<string, Graph> = {
       },
       { 
         name: 'emailInput', 
-        definition: 'form/Input', 
+        definition: 'Input', 
         props: [
           { name: 'key', type: 'string', value: 'email' },
           { name: 'name', type: 'string', value: 'email' },
@@ -283,7 +283,7 @@ const examples: Record<string, Graph> = {
       },
       { 
         name: 'submitButton', 
-        definition: 'form/Button', 
+        definition: 'Button', 
         props: [
           { name: 'key', type: 'string', value: 'submit' },
           { name: 'type', type: 'string', value: 'submit' },
@@ -305,7 +305,7 @@ const examples: Record<string, Graph> = {
     nodes: [
       { 
         name: 'page', 
-        definition: 'layout/Page', 
+        definition: 'Page', 
         props: [
           { name: 'key', type: 'string', value: 'home' },
           { name: 'className', type: 'string', value: 'min-h-screen' }
@@ -314,7 +314,7 @@ const examples: Record<string, Graph> = {
       },
       { 
         name: 'form', 
-        definition: 'form/Form', 
+        definition: 'Form', 
         props: [
           { name: 'key', type: 'string', value: 'newsletterForm' },
           { name: 'className', type: 'string', value: 'mt-10 flex gap-x-4' }
@@ -323,7 +323,7 @@ const examples: Record<string, Graph> = {
       },
       { 
         name: 'emailInput', 
-        definition: 'form/Input', 
+        definition: 'Input', 
         props: [
           { name: 'key', type: 'string', value: 'email' },
           { name: 'name', type: 'string', value: 'email' },
@@ -334,7 +334,7 @@ const examples: Record<string, Graph> = {
       },
       { 
         name: 'submitButton', 
-        definition: 'form/Button', 
+        definition: 'Button', 
         props: [
           { name: 'key', type: 'string', value: 'submit' },
           { name: 'type', type: 'string', value: 'submit' },
@@ -355,8 +355,8 @@ const examples: Record<string, Graph> = {
     name: 'subgraph-math',
     definitions: allDefinitions,
     nodes: [
-      { name: 'input1', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 10 }], meta: { x: 100, y: 150 } },
-      { name: 'input2', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 350 } },
+      { name: 'input1', definition: 'number', props: [{ name: 'value', type: 'number', value: 10 }], meta: { x: 100, y: 150 } },
+      { name: 'input2', definition: 'number', props: [{ name: 'value', type: 'number', value: 5 }], meta: { x: 100, y: 350 } },
       { 
         name: 'mathSubnet', 
         definition: 'subnet',
@@ -369,7 +369,7 @@ const examples: Record<string, Graph> = {
           { name: 'input_b', definition: 'graphInput', kind: 'graphInput' as any, props: [{ name: 'portName', type: 'string', value: 'b' }], meta: { x: 50, y: 250 } },
           { name: 'add', definition: 'add', meta: { x: 250, y: 150 } },
           { name: 'double', definition: 'multiply', meta: { x: 450, y: 150 } },
-          { name: 'two', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 2 }], meta: { x: 250, y: 300 } },
+          { name: 'two', definition: 'number', props: [{ name: 'value', type: 'number', value: 2 }], meta: { x: 250, y: 300 } },
           { name: 'output_result', definition: 'graphOutput', kind: 'graphOutput' as any, props: [{ name: 'portName', type: 'string', value: 'result' }], meta: { x: 650, y: 150 } }
         ],
         edges: [
@@ -426,13 +426,13 @@ const examples: Record<string, Graph> = {
       // Build variables object
       {
         name: 'buildVariables',
-        definition: 'json/object',
+        definition: 'object',
         meta: { x: 300, y: 100 }
       },
       // GraphQL request node
       {
         name: 'loginRequest',
-        definition: 'graphql/request',
+        definition: 'request',
         props: [
           { name: 'endpoint', type: 'string', value: 'https://api.example.com/graphql' },
           { 
@@ -455,25 +455,25 @@ const examples: Record<string, Graph> = {
       // Extract properties from response
       {
         name: 'selectAccessToken',
-        definition: 'json/select',
+        definition: 'select',
         props: [{ name: 'path', type: 'string', value: 'login.apiToken.accessToken' }],
         meta: { x: 800, y: 50 }
       },
       {
         name: 'selectExpiresAt',
-        definition: 'json/select',
+        definition: 'select',
         props: [{ name: 'path', type: 'string', value: 'login.apiToken.accessTokenExpiresAt' }],
         meta: { x: 800, y: 150 }
       },
       {
         name: 'selectUserId',
-        definition: 'json/select',
+        definition: 'select',
         props: [{ name: 'path', type: 'string', value: 'login.apiToken.userId' }],
         meta: { x: 800, y: 250 }
       },
       {
         name: 'selectTokenId',
-        definition: 'json/select',
+        definition: 'select',
         props: [{ name: 'path', type: 'string', value: 'login.apiToken.id' }],
         meta: { x: 800, y: 350 }
       },

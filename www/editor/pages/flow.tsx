@@ -8,7 +8,7 @@ export const graph: Graph = {
     {
       context: 'js',
       category: 'const',
-      name: 'const/number',
+      name: 'number',
       outputs: [{ name: 'value', type: 'number' }],
       props: [
         { name: 'value', type: 'number', default: 0, description: 'The constant value' }
@@ -36,8 +36,8 @@ export const graph: Graph = {
     },
   ],
   nodes: [
-    { name: 'num1', definition: 'const/number', meta: { x: 100, y: 100 } },
-    { name: 'num2', definition: 'const/number', meta: { x: 100, y: 250 } },
+    { name: 'num1', definition: 'number', meta: { x: 100, y: 100 } },
+    { name: 'num2', definition: 'number', meta: { x: 100, y: 250 } },
     { name: 'add1', definition: 'add', meta: { x: 350, y: 150 } },
     { name: 'mult1', definition: 'multiply', meta: { x: 600, y: 150 } },
   ],

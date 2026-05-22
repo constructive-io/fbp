@@ -6,7 +6,7 @@ import type { NodeDefinitionWithImpl } from '../src/types';
 
 export const constNumberDef: NodeDefinitionWithImpl = {
   context: 'js',
-  name: 'const/number',
+  name: 'number',
   category: 'const',
   icon: 'hash',
   outputs: [{ name: 'value', type: 'number' }],

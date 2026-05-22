@@ -4,7 +4,7 @@ import { coreDefinitions, jsonSelectDef, jsonObjectDef, flowGuardDef, stringTemp
 import { mathDefinitions } from '../__fixtures__/math-definitions';
 
 describe('core nodes', () => {
-  describe('json/select', () => {
+  describe('select', () => {
     it('should extract a value by simple path', async () => {
       const graph: Graph = {
         name: 'json-select-simple',
@@ -20,7 +20,7 @@ describe('core nodes', () => {
           },
           { 
             name: 'select', 
-            definition: 'json/select',
+            definition: 'select',
             props: [{ name: 'path', type: 'string', value: 'user.name' }]
           }
         ],
@@ -53,7 +53,7 @@ describe('core nodes', () => {
           },
           { 
             name: 'select', 
-            definition: 'json/select',
+            definition: 'select',
             props: [{ name: 'path', type: 'string', value: 'response.data.users.1.id' }]
           }
         ],
@@ -86,7 +86,7 @@ describe('core nodes', () => {
           },
           { 
             name: 'select', 
-            definition: 'json/select',
+            definition: 'select',
             props: [{ name: 'path', type: 'string', value: 'baz.qux' }]
           }
         ],
@@ -105,7 +105,7 @@ describe('core nodes', () => {
     });
   });
 
-  describe('json/object', () => {
+  describe('object', () => {
     it('should build an object from inputs', async () => {
       // For this test, we need to use the jsonObjectDef directly since it has dynamic inputs
       const result = jsonObjectDef.impl!(
@@ -124,7 +124,7 @@ describe('core nodes', () => {
     });
   });
 
-  describe('flow/guard', () => {
+  describe('guard', () => {
     it('should pass when ok is true', async () => {
       const result = flowGuardDef.impl!(
         { ok: true, error: null },
@@ -165,7 +165,7 @@ describe('core nodes', () => {
     });
   });
 
-  describe('string/template', () => {
+  describe('template', () => {
     it('should substitute placeholders', async () => {
       const result = stringTemplateDef.impl!(
         { token: 'abc123' },
@@ -199,7 +199,7 @@ describe('core nodes', () => {
     });
   });
 
-  describe('string/concat', () => {
+  describe('concat', () => {
     it('should concatenate with prefix', async () => {
       const result = stringConcatDef.impl!(
         { value: 'token123' },
