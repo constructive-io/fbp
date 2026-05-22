@@ -3,16 +3,16 @@ import { useGraph, useSelection, useNavigation } from '../context/GraphContext';
 import type { Node, Port } from '@fbp/types';
 import { clsx } from 'clsx';
 import { NodeIconSvg } from './NodeIcon';
-import { BOUNDARY_NODE_TYPES, getPortNameFromBoundary, getDataTypeFromBoundary } from '../types';
+import { BOUNDARY_NODE_KINDS, getPortNameFromBoundary, getDataTypeFromBoundary } from '../types';
 
 // Derive ports from boundary nodes inside a subnet (ensures ports are always in sync)
-// Boundary nodes are identified by their type property (graphInput, graphOutput, graphProp)
+// Boundary nodes are identified by their kind property (graphInput, graphOutput, graphProp)
 // Port names are read from the portName property
 // Exported so GraphEdge can also use it for port position lookups
 export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Port[] {
-  const nodeType = type === 'input' ? BOUNDARY_NODE_TYPES.input : BOUNDARY_NODE_TYPES.output;
+  const nodeKind = type === 'input' ? BOUNDARY_NODE_KINDS.input : BOUNDARY_NODE_KINDS.output;
   return nodes
-    .filter(n => n.type === nodeType)
+    .filter(n => n.kind === nodeKind)
     .map(n => {
       const portName = getPortNameFromBoundary(n) || n.name;
       const portType = getDataTypeFromBoundary(n);
@@ -39,7 +39,7 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
   const [hoveredPort, setHoveredPort] = useState<{ name: string; isOutput: boolean } | null>(null);
   const dragStart = useRef<{ x: number; y: number; nodeX: number; nodeY: number } | null>(null);
 
-  const definition = getDefinition(node.type);
+  const definition = getDefinition(node.definition);
   const isSelected = selection.nodeIds.has(node.name);
   const isPreview = state.boxSelect.previewNodeIds.has(node.name);
   const isSubnet = node.nodes && node.nodes.length > 0;
@@ -191,7 +191,7 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
         fontWeight={600}
         fontFamily="system-ui, sans-serif"
       >
-        {getShortName(node.type)}
+        {getShortName(node.definition)}
       </text>
       
       {isSubnet && (

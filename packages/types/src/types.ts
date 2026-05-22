@@ -44,7 +44,8 @@ export interface Group {
 }
 export type NodeKind = "node" | "subnet" | "graphInput" | "graphOutput" | "graphProp";
 export interface NodeDefinition {
-  type: string;
+  context: string;
+  name: string;
   category?: string;
   inputs?: Port[];
   outputs?: Port[];
@@ -56,8 +57,9 @@ export interface NodeDefinition {
 }
 export interface Node {
   name: string;
-  type: string;
+  definition: string;
   kind?: NodeKind;
+  context?: string;
   meta?: Metadata;
   props?: Prop[];
   inputs?: Port[];
@@ -68,6 +70,7 @@ export interface Node {
 }
 export interface Graph {
   name: string;
+  context?: string;
   definitions?: NodeDefinition[];
   inputs?: Port[];
   outputs?: Port[];

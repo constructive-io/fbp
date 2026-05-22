@@ -7,17 +7,19 @@ describe('digital assets', () => {
   describe('basic digital asset (composite node with graph)', () => {
     // A "double" digital asset: takes a number, multiplies it by 2
     const doubleDef: NodeDefinitionWithImpl = {
-      type: 'math/double',
+      context: 'js',
+      name: 'double',
       category: 'math',
       inputs: [{ name: 'x', type: 'number' }],
       outputs: [{ name: 'result', type: 'number' }],
       graph: {
         name: 'double-internal',
+        context: 'js',
         nodes: [
-          { name: 'input_x', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
-          { name: 'two', type: 'const/number', props: [{ name: 'value', type: 'number', value: 2 }] },
-          { name: 'mul', type: 'math/multiply' },
-          { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
+          { name: 'input_x', definition: 'graphInput', kind: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
+          { name: 'two', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 2 }] },
+          { name: 'mul', definition: 'multiply' },
+          { name: 'output_result', definition: 'graphOutput', kind: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
         ],
         edges: [
           { src: { node: 'input_x', port: 'value' }, dst: { node: 'mul', port: 'a' } },
@@ -32,9 +34,10 @@ describe('digital assets', () => {
     it('should evaluate a digital asset node', async () => {
       const graph: Graph = {
         name: 'use-double',
+        context: 'js',
         nodes: [
-          { name: 'num', type: 'const/number', props: [{ name: 'value', type: 'number', value: 7 }] },
-          { name: 'dbl', type: 'math/double' }
+          { name: 'num', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 7 }] },
+          { name: 'dbl', definition: 'double' }
         ],
         edges: [
           { src: { node: 'num', port: 'value' }, dst: { node: 'dbl', port: 'x' } }
@@ -54,11 +57,12 @@ describe('digital assets', () => {
     it('should chain digital assets with leaf nodes', async () => {
       const graph: Graph = {
         name: 'double-then-add',
+        context: 'js',
         nodes: [
-          { name: 'num1', type: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
-          { name: 'num2', type: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }] },
-          { name: 'dbl', type: 'math/double' },
-          { name: 'add', type: 'math/add' }
+          { name: 'num1', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
+          { name: 'num2', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }] },
+          { name: 'dbl', definition: 'double' },
+          { name: 'add', definition: 'add' }
         ],
         edges: [
           { src: { node: 'num1', port: 'value' }, dst: { node: 'dbl', port: 'x' } },
@@ -81,7 +85,8 @@ describe('digital assets', () => {
   describe('digital asset with promoted parameters (graphProp)', () => {
     // A "weighted-add" digital asset: a*weight_a + b*weight_b
     const weightedAddDef: NodeDefinitionWithImpl = {
-      type: 'math/weighted-add',
+      context: 'js',
+      name: 'weighted-add',
       category: 'math',
       inputs: [
         { name: 'a', type: 'number' },
@@ -94,17 +99,18 @@ describe('digital assets', () => {
       ],
       graph: {
         name: 'weighted-add-internal',
+        context: 'js',
         nodes: [
           // Boundary nodes
-          { name: 'in_a', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'a' }] },
-          { name: 'in_b', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'b' }] },
-          { name: 'p_wa', type: 'graphProp', props: [{ name: 'propName', type: 'string', value: 'weight_a' }] },
-          { name: 'p_wb', type: 'graphProp', props: [{ name: 'propName', type: 'string', value: 'weight_b' }] },
-          { name: 'out', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] },
+          { name: 'in_a', definition: 'graphInput', kind: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'a' }] },
+          { name: 'in_b', definition: 'graphInput', kind: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'b' }] },
+          { name: 'p_wa', definition: 'graphProp', kind: 'graphProp', props: [{ name: 'propName', type: 'string', value: 'weight_a' }] },
+          { name: 'p_wb', definition: 'graphProp', kind: 'graphProp', props: [{ name: 'propName', type: 'string', value: 'weight_b' }] },
+          { name: 'out', definition: 'graphOutput', kind: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] },
           // Computation
-          { name: 'mul_a', type: 'math/multiply' },
-          { name: 'mul_b', type: 'math/multiply' },
-          { name: 'sum', type: 'math/add' }
+          { name: 'mul_a', definition: 'multiply' },
+          { name: 'mul_b', definition: 'multiply' },
+          { name: 'sum', definition: 'add' }
         ],
         edges: [
           { src: { node: 'in_a', port: 'value' }, dst: { node: 'mul_a', port: 'a' } },
@@ -123,10 +129,11 @@ describe('digital assets', () => {
     it('should use default parameter values', async () => {
       const graph: Graph = {
         name: 'weighted-add-defaults',
+        context: 'js',
         nodes: [
-          { name: 'a', type: 'const/number', props: [{ name: 'value', type: 'number', value: 10 }] },
-          { name: 'b', type: 'const/number', props: [{ name: 'value', type: 'number', value: 20 }] },
-          { name: 'wadd', type: 'math/weighted-add' }
+          { name: 'a', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 10 }] },
+          { name: 'b', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 20 }] },
+          { name: 'wadd', definition: 'weighted-add' }
         ],
         edges: [
           { src: { node: 'a', port: 'value' }, dst: { node: 'wadd', port: 'a' } },
@@ -147,10 +154,11 @@ describe('digital assets', () => {
     it('should override parameters per-instance via props', async () => {
       const graph: Graph = {
         name: 'weighted-add-custom',
+        context: 'js',
         nodes: [
-          { name: 'a', type: 'const/number', props: [{ name: 'value', type: 'number', value: 10 }] },
-          { name: 'b', type: 'const/number', props: [{ name: 'value', type: 'number', value: 20 }] },
-          { name: 'wadd', type: 'math/weighted-add', props: [
+          { name: 'a', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 10 }] },
+          { name: 'b', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 20 }] },
+          { name: 'wadd', definition: 'weighted-add', props: [
             { name: 'weight_a', type: 'number', value: 0.7 },
             { name: 'weight_b', type: 'number', value: 0.3 }
           ]}
@@ -174,20 +182,21 @@ describe('digital assets', () => {
     it('should allow multiple instances with different parameters', async () => {
       const graph: Graph = {
         name: 'two-weighted-adds',
+        context: 'js',
         nodes: [
-          { name: 'a', type: 'const/number', props: [{ name: 'value', type: 'number', value: 10 }] },
-          { name: 'b', type: 'const/number', props: [{ name: 'value', type: 'number', value: 20 }] },
+          { name: 'a', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 10 }] },
+          { name: 'b', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 20 }] },
           // Instance 1: weight_a=2, weight_b=3
-          { name: 'wadd1', type: 'math/weighted-add', props: [
+          { name: 'wadd1', definition: 'weighted-add', props: [
             { name: 'weight_a', type: 'number', value: 2 },
             { name: 'weight_b', type: 'number', value: 3 }
           ]},
           // Instance 2: weight_a=0.5, weight_b=0.5
-          { name: 'wadd2', type: 'math/weighted-add', props: [
+          { name: 'wadd2', definition: 'weighted-add', props: [
             { name: 'weight_a', type: 'number', value: 0.5 },
             { name: 'weight_b', type: 'number', value: 0.5 }
           ]},
-          { name: 'final_add', type: 'math/add' }
+          { name: 'final_add', definition: 'add' }
         ],
         edges: [
           { src: { node: 'a', port: 'value' }, dst: { node: 'wadd1', port: 'a' } },
@@ -228,17 +237,19 @@ describe('digital assets', () => {
   describe('nested digital assets (asset using another asset)', () => {
     // "double" asset: x * 2
     const doubleDef: NodeDefinitionWithImpl = {
-      type: 'math/double',
+      context: 'js',
+      name: 'double',
       category: 'math',
       inputs: [{ name: 'x', type: 'number' }],
       outputs: [{ name: 'result', type: 'number' }],
       graph: {
         name: 'double-internal',
+        context: 'js',
         nodes: [
-          { name: 'input_x', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
-          { name: 'two', type: 'const/number', props: [{ name: 'value', type: 'number', value: 2 }] },
-          { name: 'mul', type: 'math/multiply' },
-          { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
+          { name: 'input_x', definition: 'graphInput', kind: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
+          { name: 'two', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 2 }] },
+          { name: 'mul', definition: 'multiply' },
+          { name: 'output_result', definition: 'graphOutput', kind: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
         ],
         edges: [
           { src: { node: 'input_x', port: 'value' }, dst: { node: 'mul', port: 'a' } },
@@ -250,17 +261,19 @@ describe('digital assets', () => {
 
     // "quadruple" asset: uses math/double twice (double of double)
     const quadrupleDef: NodeDefinitionWithImpl = {
-      type: 'math/quadruple',
+      context: 'js',
+      name: 'quadruple',
       category: 'math',
       inputs: [{ name: 'x', type: 'number' }],
       outputs: [{ name: 'result', type: 'number' }],
       graph: {
         name: 'quadruple-internal',
+        context: 'js',
         nodes: [
-          { name: 'input_x', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
-          { name: 'dbl1', type: 'math/double' },
-          { name: 'dbl2', type: 'math/double' },
-          { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
+          { name: 'input_x', definition: 'graphInput', kind: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
+          { name: 'dbl1', definition: 'double' },
+          { name: 'dbl2', definition: 'double' },
+          { name: 'output_result', definition: 'graphOutput', kind: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
         ],
         edges: [
           { src: { node: 'input_x', port: 'value' }, dst: { node: 'dbl1', port: 'x' } },
@@ -275,9 +288,10 @@ describe('digital assets', () => {
     it('should evaluate nested digital assets', async () => {
       const graph: Graph = {
         name: 'use-quadruple',
+        context: 'js',
         nodes: [
-          { name: 'num', type: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }] },
-          { name: 'quad', type: 'math/quadruple' }
+          { name: 'num', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }] },
+          { name: 'quad', definition: 'quadruple' }
         ],
         edges: [
           { src: { node: 'num', port: 'value' }, dst: { node: 'quad', port: 'x' } }
@@ -300,19 +314,22 @@ describe('digital assets', () => {
       // Define the digital asset as a graph-level inline definition
       const graph: Graph = {
         name: 'inline-def-graph',
+        context: 'js',
         definitions: [
           {
-            type: 'math/triple',
+            context: 'js',
+            name: 'triple',
             category: 'math',
             inputs: [{ name: 'x', type: 'number' }],
             outputs: [{ name: 'result', type: 'number' }],
             graph: {
               name: 'triple-internal',
+              context: 'js',
               nodes: [
-                { name: 'input_x', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
-                { name: 'three', type: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }] },
-                { name: 'mul', type: 'math/multiply' },
-                { name: 'output_result', type: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
+                { name: 'input_x', definition: 'graphInput', kind: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] },
+                { name: 'three', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 3 }] },
+                { name: 'mul', definition: 'multiply' },
+                { name: 'output_result', definition: 'graphOutput', kind: 'graphOutput', props: [{ name: 'portName', type: 'string', value: 'result' }] }
               ],
               edges: [
                 { src: { node: 'input_x', port: 'value' }, dst: { node: 'mul', port: 'a' } },
@@ -323,8 +340,8 @@ describe('digital assets', () => {
           }
         ],
         nodes: [
-          { name: 'num', type: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
-          { name: 'trip', type: 'math/triple' }
+          { name: 'num', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
+          { name: 'trip', definition: 'triple' }
         ],
         edges: [
           { src: { node: 'num', port: 'value' }, dst: { node: 'trip', port: 'x' } }
@@ -349,13 +366,15 @@ describe('digital assets', () => {
   describe('error handling', () => {
     it('should throw if digital asset has no output boundary nodes', async () => {
       const emptyAssetDef: NodeDefinitionWithImpl = {
-        type: 'broken/empty',
+        context: 'js',
+        name: 'broken/empty',
         inputs: [{ name: 'x', type: 'number' }],
         outputs: [{ name: 'result', type: 'number' }],
         graph: {
           name: 'empty-internal',
+          context: 'js',
           nodes: [
-            { name: 'input_x', type: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] }
+            { name: 'input_x', definition: 'graphInput', kind: 'graphInput', props: [{ name: 'portName', type: 'string', value: 'x' }] }
           ],
           edges: []
         }
@@ -363,9 +382,10 @@ describe('digital assets', () => {
 
       const graph: Graph = {
         name: 'use-empty',
+        context: 'js',
         nodes: [
-          { name: 'num', type: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
-          { name: 'empty', type: 'broken/empty' }
+          { name: 'num', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
+          { name: 'empty', definition: 'broken/empty' }
         ],
         edges: [
           { src: { node: 'num', port: 'value' }, dst: { node: 'empty', port: 'x' } }
@@ -384,7 +404,8 @@ describe('digital assets', () => {
 
     it('should throw if leaf node has no impl', async () => {
       const noImplDef: NodeDefinitionWithImpl = {
-        type: 'broken/no-impl',
+        context: 'js',
+        name: 'broken/no-impl',
         inputs: [{ name: 'x', type: 'number' }],
         outputs: [{ name: 'result', type: 'number' }]
         // No impl, no graph
@@ -392,9 +413,10 @@ describe('digital assets', () => {
 
       const graph: Graph = {
         name: 'use-no-impl',
+        context: 'js',
         nodes: [
-          { name: 'num', type: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
-          { name: 'broken', type: 'broken/no-impl' }
+          { name: 'num', definition: 'const/number', props: [{ name: 'value', type: 'number', value: 5 }] },
+          { name: 'broken', definition: 'broken/no-impl' }
         ],
         edges: [
           { src: { node: 'num', port: 'value' }, dst: { node: 'broken', port: 'x' } }
@@ -405,7 +427,7 @@ describe('digital assets', () => {
         definitions: [...mathDefinitions, noImplDef],
         outputNode: 'broken',
         outputPort: 'result'
-      })).rejects.toThrow('No implementation found for node type: broken/no-impl');
+      })).rejects.toThrow('No implementation found for node: js:broken/no-impl');
     });
   });
 });

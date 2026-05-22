@@ -19,7 +19,9 @@ export interface PropValue {
 }
 export interface Node {
   name: string;
-  type: string;
+  definition: string;
+  kind?: string;
+  context?: string;
   meta?: NodeMeta;
   props?: PropValue[];
   nodes?: Node[];
@@ -27,6 +29,7 @@ export interface Node {
 }
 export interface Graph {
   name?: string;
+  context?: string;
   nodes: Node[];
   edges: Edge[];
   definitions?: NodeDefinition[];
@@ -45,7 +48,8 @@ export interface PropDef {
   description?: string;
 }
 export interface NodeDefinition {
-  type: string;
+  context: string;
+  name: string;
   category?: string;
   inputs?: PortDef[];
   outputs?: PortDef[];

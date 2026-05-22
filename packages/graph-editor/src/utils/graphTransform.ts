@@ -19,7 +19,7 @@
  */
 
 import type { Graph, Node, Edge, Port, PropDefinition } from '@fbp/types';
-import { BOUNDARY_NODE_TYPES, getPortNameFromBoundary, getBoundaryType, getDataTypeFromBoundary, getDefaultFromBoundary } from '../types';
+import { BOUNDARY_NODE_KINDS, getPortNameFromBoundary, getBoundaryType, getDataTypeFromBoundary, getDefaultFromBoundary } from '../types';
 
 // =============================================================================
 // DERIVE PORTS FROM BOUNDARY NODES
@@ -40,10 +40,10 @@ import { BOUNDARY_NODE_TYPES, getPortNameFromBoundary, getBoundaryType, getDataT
  * @returns Array of Port definitions derived from boundary nodes
  */
 export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Port[] {
-  const nodeType = type === 'input' ? BOUNDARY_NODE_TYPES.input : BOUNDARY_NODE_TYPES.output;
+  const nodeKind = type === 'input' ? BOUNDARY_NODE_KINDS.input : BOUNDARY_NODE_KINDS.output;
   
   return nodes
-    .filter(n => n.type === nodeType)
+    .filter(n => n.kind === nodeKind)
     .map(n => {
       const portName = getPortNameFromBoundary(n) || n.name;
       const portType = getDataTypeFromBoundary(n);
@@ -63,7 +63,7 @@ export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Po
  */
 export function deriveBoundaryProps(nodes: Node[]): PropDefinition[] {
   return nodes
-    .filter(n => n.type === BOUNDARY_NODE_TYPES.prop)
+    .filter(n => n.kind === BOUNDARY_NODE_KINDS.prop)
     .map(n => {
       const propName = getPortNameFromBoundary(n) || n.name;
       const propType = getDataTypeFromBoundary(n);
@@ -320,9 +320,9 @@ function ensureDerivedPortsOnNode(node: Node): Node {
 export function migrateLegacyGraph(graph: Graph): Graph {
   // Check if we need to migrate (has ports but no boundary nodes)
   const hasBoundaryNodes = graph.nodes.some(n => 
-    n.type === BOUNDARY_NODE_TYPES.input ||
-    n.type === BOUNDARY_NODE_TYPES.output ||
-    n.type === BOUNDARY_NODE_TYPES.prop
+    n.kind === BOUNDARY_NODE_KINDS.input ||
+    n.kind === BOUNDARY_NODE_KINDS.output ||
+    n.kind === BOUNDARY_NODE_KINDS.prop
   );
   
   if (hasBoundaryNodes) {
@@ -343,7 +343,8 @@ export function migrateLegacyGraph(graph: Graph): Graph {
     }
     boundaryNodes.push({
       name: `input_${port.name}`,
-      type: BOUNDARY_NODE_TYPES.input,
+      definition: BOUNDARY_NODE_KINDS.input,
+      kind: BOUNDARY_NODE_KINDS.input as any,
       meta: { x: 50, y: 50 + i * 100 },
       props: nodeProps,
     });
@@ -359,7 +360,8 @@ export function migrateLegacyGraph(graph: Graph): Graph {
     }
     boundaryNodes.push({
       name: `output_${port.name}`,
-      type: BOUNDARY_NODE_TYPES.output,
+      definition: BOUNDARY_NODE_KINDS.output,
+      kind: BOUNDARY_NODE_KINDS.output as any,
       meta: { x: 500, y: 50 + i * 100 },
       props: nodeProps,
     });
@@ -378,7 +380,8 @@ export function migrateLegacyGraph(graph: Graph): Graph {
     }
     boundaryNodes.push({
       name: `prop_${prop.name}`,
-      type: BOUNDARY_NODE_TYPES.prop,
+      definition: BOUNDARY_NODE_KINDS.prop,
+      kind: BOUNDARY_NODE_KINDS.prop as any,
       meta: { x: 50, y: 50 + (graph.inputs?.length || 0) * 100 + i * 100 },
       props: nodeProps,
     });
@@ -407,9 +410,9 @@ function migrateLegacyNode(node: Node): Node {
   
   // Check if subnet already has boundary nodes
   const hasBoundaryNodes = node.nodes.some(n => 
-    n.type === BOUNDARY_NODE_TYPES.input ||
-    n.type === BOUNDARY_NODE_TYPES.output ||
-    n.type === BOUNDARY_NODE_TYPES.prop
+    n.kind === BOUNDARY_NODE_KINDS.input ||
+    n.kind === BOUNDARY_NODE_KINDS.output ||
+    n.kind === BOUNDARY_NODE_KINDS.prop
   );
   
   if (hasBoundaryNodes) {
@@ -432,7 +435,8 @@ function migrateLegacyNode(node: Node): Node {
     }
     boundaryNodes.push({
       name: `input_${port.name}`,
-      type: BOUNDARY_NODE_TYPES.input,
+      definition: BOUNDARY_NODE_KINDS.input,
+      kind: BOUNDARY_NODE_KINDS.input as any,
       meta: { x: 50, y: 50 + i * 100 },
       props: nodeProps,
     });
@@ -447,7 +451,8 @@ function migrateLegacyNode(node: Node): Node {
     }
     boundaryNodes.push({
       name: `output_${port.name}`,
-      type: BOUNDARY_NODE_TYPES.output,
+      definition: BOUNDARY_NODE_KINDS.output,
+      kind: BOUNDARY_NODE_KINDS.output as any,
       meta: { x: 500, y: 50 + i * 100 },
       props: nodeProps,
     });

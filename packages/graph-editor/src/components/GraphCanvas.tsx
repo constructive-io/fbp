@@ -289,7 +289,7 @@ export function GraphCanvas() {
     if (!data) return;
 
     try {
-      const { type, isBoundary } = JSON.parse(data);
+      const { definitionName, isBoundary } = JSON.parse(data);
       const rect = svgRef.current?.getBoundingClientRect();
       if (!rect) return;
 
@@ -300,14 +300,14 @@ export function GraphCanvas() {
       );
 
       if (isBoundary) {
-        const boundaryType = type === 'core/graph/input' ? 'input' 
-          : type === 'core/graph/output' ? 'output' 
+        const boundaryType = definitionName === 'graph/input' ? 'input' 
+          : definitionName === 'graph/output' ? 'output' 
           : 'prop';
         dispatch({ type: 'ADD_BOUNDARY_NODE', boundaryType, position });
       } else {
         const newNode = {
-          name: `${type.split('/').pop()}_${Date.now().toString(36)}`,
-          type,
+          name: `${definitionName.split('/').pop()}_${Date.now().toString(36)}`,
+          definition: definitionName,
           meta: position
         };
         dispatch({ type: 'ADD_NODE', node: newNode });
@@ -338,7 +338,7 @@ export function GraphCanvas() {
     const y = node.meta?.y || 0;
     const isOutput = state.connecting.isOutput;
     
-    const definition = state.definitions.get(node.type);
+    const definition = state.definitions.get(node.definition);
     const ports = isOutput
       ? (node.outputs || definition?.outputs || [])
       : (node.inputs || definition?.inputs || []);
