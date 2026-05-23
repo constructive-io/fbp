@@ -204,8 +204,6 @@ export function GraphCanvas() {
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<SVGSVGElement>) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-    console.log('[GraphCanvas] keydown:', e.key, 'cwd:', state.cwd, 'sel:', Array.from(selectionRef.current));
-
     // Spacebar for pan mode
     if (e.code === 'Space' && !e.repeat) {
       e.preventDefault();
@@ -330,6 +328,38 @@ export function GraphCanvas() {
   useEffect(() => {
     svgRef.current?.focus();
   }, [state.cwd]);
+
+  // Global keyboard listener for navigation keys (U/Enter) —
+  // ensures they work even when SVG doesn't have focus (e.g. after using the dropdown)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      // Skip if SVG already has focus (the onKeyDown handler will handle it)
+      if (document.activeElement === svgRef.current) return;
+
+      if (e.key === 'u' || e.key === 'U') {
+        if (canGoUp) {
+          e.preventDefault();
+          goUp();
+          svgRef.current?.focus();
+        }
+      } else if (e.key === 'Enter') {
+        const currentSelection = Array.from(selectionRef.current);
+        const currentScopedNodes = scopedNodesRef.current;
+        if (currentSelection.length === 1) {
+          const node = currentScopedNodes.find(n => n.name === currentSelection[0]);
+          if (node?.nodes && node.nodes.length > 0) {
+            e.preventDefault();
+            dispatch({ type: 'DIVE_INTO', nodeId: currentSelection[0] });
+            svgRef.current?.focus();
+          }
+        }
+      }
+    };
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [canGoUp, goUp, dispatch]);
 
   const getConnectingStartPos = (): Point | null => {
     if (!state.connecting.active || !state.connecting.sourceNode || !state.connecting.sourcePort) {

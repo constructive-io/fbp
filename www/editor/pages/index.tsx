@@ -712,7 +712,7 @@ export default function Home() {
         <label className="text-sm text-slate-300">Example:</label>
         <select
           value={selectedExample}
-          onChange={(e) => setSelectedExample(e.target.value)}
+          onChange={(e) => { setSelectedExample(e.target.value); e.target.blur(); }}
           className="bg-slate-700 text-slate-200 text-sm rounded px-3 py-1.5 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value={workspaceKey}>{workspaceKey}</option>
