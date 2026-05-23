@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { useGraph, useSelection, useNavigation } from '../context/GraphContext';
+import { useGraph, useSelection } from '../context/GraphContext';
 import type { Node, Port } from '@fbp/types';
 import { clsx } from 'clsx';
 import { NodeIconSvg } from './NodeIcon';
@@ -34,7 +34,6 @@ interface GraphNodeProps {
 export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps) {
   const { state, dispatch, getDefinition, getShortName } = useGraph();
   const { selection, selectNodes } = useSelection();
-  const { diveInto } = useNavigation();
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredPort, setHoveredPort] = useState<{ name: string; isOutput: boolean } | null>(null);
   const dragStart = useRef<{ x: number; y: number; nodeX: number; nodeY: number } | null>(null);
@@ -59,11 +58,6 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-
-    if (e.detail === 2 && isSubnet) {
-      diveInto(node.name);
-      return;
-    }
 
     // Determine which nodes will be dragged BEFORE updating selection
     // This avoids race conditions with async state updates
@@ -108,7 +102,7 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  }, [node.name, isSelected, isSubnet, x, y, state.view.zoom, state.selection.nodeIds, selectNodes, diveInto, dispatch]);
+  }, [node.name, isSelected, x, y, state.view.zoom, state.selection.nodeIds, selectNodes, dispatch]);
 
   const handlePortMouseDown = useCallback((e: React.MouseEvent, portName: string, isOutput: boolean, portIndex: number) => {
     e.stopPropagation();
