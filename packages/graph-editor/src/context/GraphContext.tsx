@@ -963,9 +963,10 @@ interface GraphContextValue {
 
 const GraphContext = createContext<GraphContextValue | null>(null);
 
-export function GraphProvider({ children, initialGraph, externalDefinitions, onSelectionChange }: {
+export function GraphProvider({ children, initialGraph, initialCwd, externalDefinitions, onSelectionChange }: {
   children: ReactNode;
   initialGraph?: Graph;
+  initialCwd?: string;
   externalDefinitions?: NodeDefinition[];
   onSelectionChange?: (selectedNodeIds: string[]) => void;
 }) {
@@ -975,6 +976,7 @@ export function GraphProvider({ children, initialGraph, externalDefinitions, onS
   const [state, dispatch] = useReducer(graphReducer, {
     ...initialState,
     graph: migratedInitialGraph,
+    cwd: initialCwd || '/',
     definitions: new Map([
       ...BOUNDARY_NODE_DEFINITIONS.map(d => [d.name, d] as [string, NodeDefinition]),
       ...(migratedInitialGraph.definitions || []).map(d => [d.name, d] as [string, NodeDefinition]),

@@ -693,30 +693,48 @@ function buildWorkspaceGraph(definitions: NodeDefinitionWithImpl[], graphs: Reco
 }
 
 const exampleNames = Object.keys(examples);
-const workspaceKey = '📂 Workspace (Browse All)';
+
+// Build a mapping of graph names to their workspace paths for quick-jump
+function buildGraphPathMap(definitions: NodeDefinitionWithImpl[], graphs: Record<string, Graph>): Map<string, string> {
+  const pathMap = new Map<string, string>();
+  // Map each example graph to its workspace path
+  for (const [label, graph] of Object.entries(graphs)) {
+    const ctx = graph.context || 'js';
+    const graphName = graph.name || label;
+    pathMap.set(label, `/${ctx}/graphs/${graphName}`);
+  }
+  return pathMap;
+}
+
+const graphPathMap = buildGraphPathMap([...allDefinitions, weightedAddDef], examples);
 
 export default function Home() {
-  const [selectedExample, setSelectedExample] = useState(exampleNames[0]);
-  const isWorkspace = selectedExample === workspaceKey;
+  const [jumpPath, setJumpPath] = useState('/');
   const graph = useMemo(() => {
-    if (isWorkspace) {
-      return buildWorkspaceGraph([...allDefinitions, weightedAddDef], examples);
-    }
-    return examples[selectedExample];
-  }, [selectedExample, isWorkspace]);
+    return buildWorkspaceGraph([...allDefinitions, weightedAddDef], examples);
+  }, []);
 
+  const handleJump = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === '/') {
+      setJumpPath('/');
+    } else {
+      setJumpPath(graphPathMap.get(value) || '/');
+    }
+    e.target.blur();
+  };
 
   return (
     <div className="h-screen w-screen flex flex-col">
       <div className="h-12 bg-slate-800 border-b border-slate-700 flex items-center px-4 gap-4">
-        <label className="text-sm text-slate-300">Example:</label>
+        <label className="text-sm text-slate-300">Jump to:</label>
         <select
-          value={selectedExample}
-          onChange={(e) => { setSelectedExample(e.target.value); e.target.blur(); }}
+          value=""
+          onChange={handleJump}
           className="bg-slate-700 text-slate-200 text-sm rounded px-3 py-1.5 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value={workspaceKey}>{workspaceKey}</option>
-          <option disabled>──────────</option>
+          <option value="" disabled>Navigate to a graph...</option>
+          <option value="/">/ (Root)</option>
           {exampleNames.map((name) => (
             <option key={name} value={name}>
               {name}
@@ -724,12 +742,13 @@ export default function Home() {
           ))}
         </select>
         <span className="text-xs text-slate-500 ml-2">
-          Switch between examples to see different flow graphs
+          Enter to dive in · U to go up
         </span>
       </div>
       <div className="flex-1">
         <GraphEditor 
-          key={selectedExample} 
+          key={jumpPath}
+          initialCwd={jumpPath}
           graph={graph}
           definitions={graph.definitions as NodeDefinitionWithImpl[]}
           evaluateFn={evaluate}

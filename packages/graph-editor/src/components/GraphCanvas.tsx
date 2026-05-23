@@ -20,6 +20,8 @@ export function GraphCanvas() {
   scopedNodesRef.current = scopedNodes;
   const selectionRef = useRef(state.selection.nodeIds);
   selectionRef.current = state.selection.nodeIds;
+  const cwdRef = useRef(state.cwd);
+  cwdRef.current = state.cwd;
   
   const svgRef = useRef<SVGSVGElement>(null);
   const bgRef = useRef<SVGRectElement>(null);
@@ -235,21 +237,7 @@ export function GraphCanvas() {
           setConnectingEnd(null);
         }
         break;
-      case 'u':
-      case 'U':
-        if (canGoUp) goUp();
-        break;
-      case 'Enter': {
-        const currentSelection = Array.from(selectionRef.current);
-        const currentScopedNodes = scopedNodesRef.current;
-        if (currentSelection.length === 1) {
-          const node = currentScopedNodes.find(n => n.name === currentSelection[0]);
-          if (node?.nodes && node.nodes.length > 0) {
-            dispatch({ type: 'DIVE_INTO', nodeId: currentSelection[0] });
-          }
-        }
-        break;
-      }
+      // U and Enter handled by global document listener (see useEffect below)
       case 'c':
       case 'C':
         if (e.shiftKey && state.selection.nodeIds.size >= 1) {
@@ -330,19 +318,20 @@ export function GraphCanvas() {
   }, [state.cwd]);
 
   // Global keyboard listener for navigation keys (U/Enter) —
-  // ensures they work even when SVG doesn't have focus (e.g. after using the dropdown)
+  // always uses document-level listener so it works regardless of focus state
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Skip if user is typing in an input field
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-      // Skip if SVG already has focus (the onKeyDown handler will handle it)
-      if (document.activeElement === svgRef.current) return;
 
       if (e.key === 'u' || e.key === 'U') {
-        if (canGoUp) {
-          e.preventDefault();
-          goUp();
-          svgRef.current?.focus();
+        if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+          const currentCwd = cwdRef.current;
+          if (currentCwd !== '/') {
+            e.preventDefault();
+            dispatch({ type: 'GO_UP' });
+            svgRef.current?.focus();
+          }
         }
       } else if (e.key === 'Enter') {
         const currentSelection = Array.from(selectionRef.current);
@@ -359,7 +348,7 @@ export function GraphCanvas() {
     };
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [canGoUp, goUp, dispatch]);
+  }, [dispatch]);
 
   const getConnectingStartPos = (): Point | null => {
     if (!state.connecting.active || !state.connecting.sourceNode || !state.connecting.sourcePort) {
