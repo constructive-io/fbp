@@ -18,9 +18,9 @@ exports.coreDefinitions = exports.stringConcatDef = exports.stringTemplateDef = 
  * - value: any (the extracted value)
  */
 exports.jsonSelectDef = {
-    context: 'core',
+    context: 'js',
+    name: 'json:select',
     category: 'json',
-    type: 'core/json/select',
     icon: 'circle',
     inputs: [
         { name: 'obj', type: 'json' }
@@ -72,9 +72,9 @@ exports.jsonSelectDef = {
  * - value: json (the constructed object)
  */
 exports.jsonObjectDef = {
-    context: 'core',
+    context: 'js',
+    name: 'json:object',
     category: 'json',
-    type: 'core/json/object',
     icon: 'braces',
     inputs: [], // Dynamic inputs - any input name is valid
     outputs: [
@@ -100,9 +100,9 @@ exports.jsonObjectDef = {
  * - error: json (the error if failed)
  */
 exports.flowGuardDef = {
-    context: 'core',
+    context: 'js',
+    name: 'flow:guard',
     category: 'flow',
-    type: 'core/flow/guard',
     icon: 'zap',
     inputs: [
         { name: 'ok', type: 'boolean' },
@@ -146,9 +146,9 @@ exports.flowGuardDef = {
  * - value: string (the resulting string)
  */
 exports.stringTemplateDef = {
-    context: 'core',
+    context: 'js',
+    name: 'string:template',
     category: 'string',
-    type: 'core/string/template',
     icon: 'quote',
     inputs: [], // Dynamic inputs based on template placeholders
     outputs: [
@@ -188,9 +188,9 @@ exports.stringTemplateDef = {
  * - value: string (the resulting string)
  */
 exports.stringConcatDef = {
-    context: 'core',
+    context: 'js',
+    name: 'string:concat',
     category: 'string',
-    type: 'core/string/concat',
     icon: 'link',
     inputs: [
         { name: 'value', type: 'string' }

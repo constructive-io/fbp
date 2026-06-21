@@ -47,6 +47,8 @@ export interface PropDef {
   schema?: Record<string, any>;
   default?: any;
   description?: string;
+  required?: boolean;
+  options?: string[];
 }
 export interface NodeDefinition {
   context: string;
@@ -57,6 +59,7 @@ export interface NodeDefinition {
   props?: PropDef[];
   graph?: Graph;
   volatile?: boolean;
+  runtime?: string;
   icon?: string;
   description?: string;
 }

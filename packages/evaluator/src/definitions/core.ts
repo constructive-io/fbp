@@ -19,7 +19,7 @@ import type { NodeDefinitionWithImpl } from '../types';
  */
 export const jsonSelectDef: NodeDefinitionWithImpl = {
   context: 'js',
-  name: 'select',
+  name: 'json:select',
   category: 'json',
   icon: 'circle',
   inputs: [
@@ -76,7 +76,7 @@ export const jsonSelectDef: NodeDefinitionWithImpl = {
  */
 export const jsonObjectDef: NodeDefinitionWithImpl = {
   context: 'js',
-  name: 'object',
+  name: 'json:object',
   category: 'json',
   icon: 'braces',
   inputs: [], // Dynamic inputs - any input name is valid
@@ -105,7 +105,7 @@ export const jsonObjectDef: NodeDefinitionWithImpl = {
  */
 export const flowGuardDef: NodeDefinitionWithImpl = {
   context: 'js',
-  name: 'guard',
+  name: 'flow:guard',
   category: 'flow',
   icon: 'zap',
   inputs: [
@@ -152,7 +152,7 @@ export const flowGuardDef: NodeDefinitionWithImpl = {
  */
 export const stringTemplateDef: NodeDefinitionWithImpl = {
   context: 'js',
-  name: 'template',
+  name: 'string:template',
   category: 'string',
   icon: 'quote',
   inputs: [], // Dynamic inputs based on template placeholders
@@ -198,7 +198,7 @@ export const stringTemplateDef: NodeDefinitionWithImpl = {
  */
 export const stringConcatDef: NodeDefinitionWithImpl = {
   context: 'js',
-  name: 'concat',
+  name: 'string:concat',
   category: 'string',
   icon: 'link',
   inputs: [

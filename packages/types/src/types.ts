@@ -28,6 +28,7 @@ export interface PropDefinition {
   default?: any;
   description?: string;
   required?: boolean;
+  options?: string[];
 }
 export interface EdgeEndpoint {
   node: string;
@@ -53,6 +54,7 @@ export interface NodeDefinition {
   props?: PropDefinition[];
   graph?: Graph;
   volatile?: boolean;
+  runtime?: string;
   description?: string;
   icon?: string;
 }
