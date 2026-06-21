@@ -25,7 +25,7 @@ import type { NodeDefinitionWithImpl } from '../src/types';
  */
 export const graphqlRequestDef: NodeDefinitionWithImpl = {
   context: 'js',
-  name: 'request',
+  name: 'graphql:request',
   category: 'graphql',
   icon: 'graphql',
   inputs: [
