@@ -12,6 +12,7 @@
     "directory": "dist"
   },
   "scripts": {
+    "prepack": "npm run build",
     "build": "makage build",
     "build:dev": "makage build --dev",
     "clean": "makage clean"
