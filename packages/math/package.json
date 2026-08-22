@@ -1,6 +1,6 @@
 {
   "name": "@fbp/math",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Inline math node adapter (add, multiply, subtract) for the constructive-db compute worker",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

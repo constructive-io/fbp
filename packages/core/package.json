@@ -1,6 +1,6 @@
 {
   "name": "@fbp/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Flow-based programming core primitives: inline node registry, adapter and implementation types",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fbp/graph-editor",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "FBP visual graph editor — execution state visualization and rich function cards",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",
