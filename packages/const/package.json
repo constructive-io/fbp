@@ -1,6 +1,6 @@
 {
   "name": "@fbp/const",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Inline const node adapter (number, string, boolean) for the constructive-db compute worker",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

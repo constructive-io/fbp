@@ -1,6 +1,6 @@
 {
   "name": "@fbp/graph",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Flow-based programming graph-execution payload helpers: job/graph payload shapes, type guards, and inline argument preparation",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

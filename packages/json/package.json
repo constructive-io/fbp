@@ -1,6 +1,6 @@
 {
   "name": "@fbp/json",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Inline json node adapter (select, object, merge, split) for the constructive-db compute worker",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

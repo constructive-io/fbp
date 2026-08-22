@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/constructive-io/fbp/compare/@fbp/graph-editor@1.1.0...@fbp/graph-editor@1.3.0) (2026-08-22)
+
+### Bug Fixes
+
+- add 'toggle-left' alias to icon map ([18ca59c](https://github.com/constructive-io/fbp/commit/18ca59c92fa0d59c7fb570a1e9371df5063637e4))
+- drop /route from node type identifiers — category:name only ([75dacd6](https://github.com/constructive-io/fbp/commit/75dacd653aad9835e0dd20a59462fd3ee1d780b6)), closes [constructive-io/constructive-planning#1110](https://github.com/constructive-io/constructive-planning/issues/1110)
+
+### Features
+
+- **graph-editor:** add 16 new icons to NodeIcon map ([fdee57e](https://github.com/constructive-io/fbp/commit/fdee57e36e8c606758ad4d0f1fbc03dba3e79fd7))
+- upstream the platform's fbp packages ([1122dc8](https://github.com/constructive-io/fbp/commit/1122dc855681bbdfe594ee92930ba7a5eb3fc938))
+
 # 1.1.0 (2026-05-23)
 
 ### Bug Fixes

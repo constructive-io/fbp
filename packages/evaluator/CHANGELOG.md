@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/constructive-io/fbp/compare/@fbp/evaluator@1.1.0...@fbp/evaluator@1.3.0) (2026-08-22)
+
+### Bug Fixes
+
+- drop /route from node type identifiers — category:name only ([75dacd6](https://github.com/constructive-io/fbp/commit/75dacd653aad9835e0dd20a59462fd3ee1d780b6)), closes [constructive-io/constructive-planning#1110](https://github.com/constructive-io/constructive-planning/issues/1110)
+
+### Features
+
+- add options/runtime to types, use full task_identifier in evaluator ([c265fbd](https://github.com/constructive-io/fbp/commit/c265fbdf8932fdb0831542b884aad20c198ee7c3))
+- upstream the platform's fbp packages ([1122dc8](https://github.com/constructive-io/fbp/commit/1122dc855681bbdfe594ee92930ba7a5eb3fc938))
+
 # 1.1.0 (2026-05-23)
 
 ### Bug Fixes

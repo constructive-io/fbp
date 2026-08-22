@@ -1,6 +1,6 @@
 {
   "name": "@fbp/ctx",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Inline invocation-context node adapter (ctx:request) for the constructive-db compute worker",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",
