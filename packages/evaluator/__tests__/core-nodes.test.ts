@@ -1,7 +1,7 @@
 import type { Graph } from '@fbp/types';
+
+import { coreDefinitions, flowGuardDef, jsonObjectDef, stringConcatDef,stringTemplateDef } from '../__fixtures__/core-definitions';
 import { evaluate } from '../src/evaluate';
-import { coreDefinitions, jsonSelectDef, jsonObjectDef, flowGuardDef, stringTemplateDef, stringConcatDef } from '../__fixtures__/core-definitions';
-import { mathDefinitions } from '../__fixtures__/math-definitions';
 
 describe('core nodes', () => {
   describe('select', () => {

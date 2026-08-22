@@ -7,7 +7,7 @@
  * Path format: "/" for root, "/nodeName" for root-level node, "/parent/child" for nested
  */
 
-import type { Graph, Node, Edge, PropValue, PortRef } from './types';
+import type { Edge, Graph, Node, PortRef,PropValue } from './types';
 
 // =============================================================================
 // PATH UTILITIES

@@ -1,6 +1,7 @@
 import type { Graph } from '@fbp/types';
+
+import { mathDefinitions } from '../__fixtures__/math-definitions';
 import { evaluate } from '../src/evaluate';
-import { mathDefinitions, constNumberDef, addDef, multiplyDef } from '../__fixtures__/math-definitions';
 import type { NodeDefinitionWithImpl } from '../src/types';
 
 describe('digital assets', () => {

@@ -8,10 +8,11 @@ Storage specification and manipulation API for flow-based programming graphs.
 2. [Design Philosophy](#design-philosophy)
 3. [Storage Schema](#storage-schema)
 4. [Normative Rules](#normative-rules)
-5. [Renderer Types](#renderer-types)
-6. [API Reference](#api-reference)
-7. [Examples](#examples)
-8. [Migration Guide](#migration-guide)
+5. [Evaluation Models](#evaluation-models)
+6. [Renderer Types](#renderer-types)
+7. [API Reference](#api-reference)
+8. [Examples](#examples)
+9. [Migration Guide](#migration-guide)
 
 ---
 
@@ -252,6 +253,30 @@ Only store what's needed to reconstruct the graph. Derived data (like port array
 
 **Stored:** Boundary nodes, edges, property values
 **Derived:** `inputs/outputs/props` arrays, computed layouts
+
+### Rule 5: Selective Emission
+
+A node may emit packets on any subset of its declared output ports when it fires. A declared port that does not emit means the branch behind it is not taken: downstream nodes wired only to that port never receive input and never fire. This is how conditionals work in FBP — which port fired IS the branch decision.
+
+Two consequences for any conforming evaluator:
+
+- **Undeclared ports are a design-time error.** An edge whose source port is not among the source node's declared ports (from `NodeDefinition.outputs`, or a subnet's `graphOutput` boundary nodes per Rule 1) is invalid and must be rejected when the graph is validated, not discovered mid-run.
+- **Completion cannot require every output.** A graph's result is whichever `graphOutput` boundary nodes materialized; outputs downstream of an unfired port legitimately never materialize.
+
+---
+
+## Evaluation Models
+
+This spec defines the *storage format*, independent of how a graph is evaluated. Two classic evaluation models exist for flow graphs:
+
+| Model | Direction | Firing rule |
+|-------|-----------|-------------|
+| **Eager** (push, data-driven) | Inputs → outputs | A node fires when all of its connected input ports have received packets |
+| **Lazy** (pull, demand-driven) | Outputs → inputs | Evaluation starts from the demanded outputs; a node fires only when a downstream consumer demands its result |
+
+Both models operate on the same stored graph: the format carries no evaluation-model assumptions. Note that lazy evaluation is not what makes conditionals possible — demand is traced through the graph's wiring before any data exists, so a lazy evaluator demands both branches of a conditional just as an eager one reaches them. Data-dependent branching comes from **selective emission** (Rule 5) under either model: a node emits on the port it selects, and only that subtree proceeds.
+
+The Constructive graph execution engine implements the **eager** model with selective emission. Its engine-specific semantics — quiescent completion, the `GRAPH_STALLED` failure for a graph that settles with no materialized output, and watchdog/timeout behavior — live outside this spec; see the `fbp-architecture` skill and constructive-planning#1770.
 
 ---
 

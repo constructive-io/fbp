@@ -1,9 +1,10 @@
-export { GraphEditor } from './GraphEditor';
-export { GraphCanvas } from './GraphCanvas';
-export { GraphNode, getNodePortPosition, NODE_WIDTH, NODE_HEADER_HEIGHT, PORT_HEIGHT } from './GraphNode';
-export { GraphEdge, TempEdge } from './GraphEdge';
-export { PropertiesPanel } from './PropertiesPanel';
-export { NodePalette } from './NodePalette';
-export { NodeIcon, NodeIconSvg } from './NodeIcon';
-export { StatusBar } from './StatusBar';
 export { CodeEditor } from './CodeEditor';
+export { CommandPalette } from './CommandPalette';
+export { GraphCanvas } from './GraphCanvas';
+export { GraphEdge, TempEdge } from './GraphEdge';
+export { GraphEditor } from './GraphEditor';
+export { getNodePortPosition, getNodeWidth, GraphNode, NODE_HEADER_HEIGHT, NODE_WIDTH, PORT_HEIGHT, RICH_NODE_WIDTH } from './GraphNode';
+export { NodeIcon, NodeIconSvg } from './NodeIcon';
+export { NodePalette } from './NodePalette';
+export { PropertiesPanel } from './PropertiesPanel';
+export { StatusBar } from './StatusBar';

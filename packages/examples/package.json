@@ -1,0 +1,40 @@
+{
+  "name": "@fbp/examples",
+  "version": "0.1.0",
+  "description": "Example FBP flow graphs — the catalog the Flows panel offers and the suites execute",
+  "author": "Constructive <developers@constructive.io>",
+  "license": "MIT",
+  "main": "index.js",
+  "module": "esm/index.js",
+  "types": "index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "scripts": {
+    "build": "makage build",
+    "build:dev": "makage build --dev",
+    "clean": "makage clean",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@fbp/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@fbp/evaluator": "workspace:*",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.4",
+    "jest": "^29.7.0",
+    "makage": "^0.1.12",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.7.0"
+  },
+  "homepage": "https://github.com/constructive-io/fbp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/constructive-io/fbp"
+  },
+  "bugs": {
+    "url": "https://github.com/constructive-io/fbp/issues"
+  }
+}

@@ -1,14 +1,13 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { useGraph, useSelection } from '../context/GraphContext';
 import type { Node, Port } from '@fbp/types';
-import { clsx } from 'clsx';
+import React, { useCallback, useRef, useState } from 'react';
+
+import type { NodeExecutionState } from '../context/GraphContext';
+import { useGraph, useHighlightedNode,useNodeStates, useSelection } from '../context/GraphContext';
+import { BOUNDARY_NODE_KINDS, getDataTypeFromBoundary,getPortNameFromBoundary } from '../types';
+import { FBP } from '../utils/theme';
 import { NodeIconSvg } from './NodeIcon';
-import { BOUNDARY_NODE_KINDS, getPortNameFromBoundary, getDataTypeFromBoundary } from '../types';
 
 // Derive ports from boundary nodes inside a subnet (ensures ports are always in sync)
-// Boundary nodes are identified by their kind property (graphInput, graphOutput, graphProp)
-// Port names are read from the portName property
-// Exported so GraphEdge can also use it for port position lookups
 export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Port[] {
   const nodeKind = type === 'input' ? BOUNDARY_NODE_KINDS.input : BOUNDARY_NODE_KINDS.output;
   return nodes
@@ -20,10 +19,17 @@ export function deriveBoundaryPorts(nodes: Node[], type: 'input' | 'output'): Po
     });
 }
 
-const NODE_WIDTH = 180;
-const NODE_HEADER_HEIGHT = 28;
+// Standard compact node dimensions
+const NODE_WIDTH = 240;
+const NODE_HEADER_HEIGHT = 32;
 const PORT_HEIGHT = 24;
 const PORT_RADIUS = 6;
+
+// Rich function card dimensions (same width as compact for uniformity)
+const RICH_NODE_WIDTH = NODE_WIDTH;
+const RICH_HEADER_HEIGHT = NODE_HEADER_HEIGHT;
+const RICH_DESC_HEIGHT = 22;
+const RICH_META_HEIGHT = 20;
 
 interface GraphNodeProps {
   node: Node;
@@ -31,9 +37,25 @@ interface GraphNodeProps {
   onEndConnect?: (nodeId: string, portName: string, isOutput: boolean) => void;
 }
 
+// Get node prop value helper
+function getNodeProp(node: Node, propName: string): any {
+  const prop = node.props?.find(p => p.name === propName);
+  return prop?.value;
+}
+
+const EXEC_STATE_COLORS: Record<NodeExecutionState, { stroke: string; glow: string }> = {
+  pending: { stroke: '#71717a', glow: 'rgba(113,113,122,0.3)' },
+  queued: { stroke: '#a78bfa', glow: 'rgba(167,139,250,0.3)' },
+  running: { stroke: '#facc15', glow: 'rgba(250,204,21,0.4)' },
+  completed: { stroke: '#4ade80', glow: 'rgba(74,222,128,0.4)' },
+  failed: { stroke: '#f87171', glow: 'rgba(248,113,113,0.4)' },
+};
+
 export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps) {
   const { state, dispatch, getDefinition, getShortName } = useGraph();
   const { selection, selectNodes } = useSelection();
+  const nodeStatesMap = useNodeStates();
+  const highlightedNodeId = useHighlightedNode();
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredPort, setHoveredPort] = useState<{ name: string; isOutput: boolean } | null>(null);
   const dragStart = useRef<{ x: number; y: number; nodeX: number; nodeY: number } | null>(null);
@@ -41,38 +63,34 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
   const definition = getDefinition(node.type);
   const isSelected = selection.nodeIds.has(node.name);
   const isPreview = state.boxSelect.previewNodeIds.has(node.name);
+  const isHighlighted = highlightedNodeId === node.name;
   const isSubnet = node.nodes && node.nodes.length > 0;
-  
-  // For subnets, derive inputs/outputs from boundary nodes inside (always in sync)
-  // For regular nodes, use node.inputs/outputs or fall back to definition
+  const isRichNode = definition?.category === 'functions';
+  const execInfo = nodeStatesMap?.[node.name];
+  const execColors = execInfo ? EXEC_STATE_COLORS[execInfo.state] : null;
+
+  // For subnets, derive inputs/outputs from boundary nodes inside
   const inputs = isSubnet 
     ? deriveBoundaryPorts(node.nodes || [], 'input')
     : (node.inputs || definition?.inputs || []);
   const outputs = isSubnet 
     ? deriveBoundaryPorts(node.nodes || [], 'output')
     : (node.outputs || definition?.outputs || []);
-  const nodeHeight = NODE_HEADER_HEIGHT + Math.max(inputs.length, outputs.length, 1) * PORT_HEIGHT + 8;
 
   const x = node.meta?.x || 0;
   const y = node.meta?.y || 0;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-
-    // Determine which nodes will be dragged BEFORE updating selection
-    // This avoids race conditions with async state updates
     let nodesToDrag: string[];
     const additive = e.shiftKey;
 
     if (additive) {
-      // Shift-click: add to existing selection, drag all
       nodesToDrag = [...Array.from(state.selection.nodeIds), node.name];
       selectNodes([node.name], true);
     } else if (isSelected) {
-      // Already selected without shift: drag all currently selected
       nodesToDrag = Array.from(state.selection.nodeIds);
     } else {
-      // Not selected, no shift: select only this node, drag only this node
       nodesToDrag = [node.name];
       selectNodes([node.name], false);
     }
@@ -84,7 +102,6 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
       if (!dragStart.current) return;
       const dx = (moveEvent.clientX - dragStart.current.x) / state.view.zoom;
       const dy = (moveEvent.clientY - dragStart.current.y) / state.view.zoom;
-
       dispatch({
         type: 'MOVE_NODES',
         nodeIds: nodesToDrag,
@@ -104,12 +121,10 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
     window.addEventListener('mouseup', handleMouseUp);
   }, [node.name, isSelected, x, y, state.view.zoom, state.selection.nodeIds, selectNodes, dispatch]);
 
-  const handlePortMouseDown = useCallback((e: React.MouseEvent, portName: string, isOutput: boolean, portIndex: number) => {
+  const handlePortMouseDown = useCallback((e: React.MouseEvent, portName: string, isOutput: boolean, portY: number, portX: number) => {
     e.stopPropagation();
-    const portY = y + NODE_HEADER_HEIGHT + portIndex * PORT_HEIGHT + PORT_HEIGHT / 2;
-    const portX = isOutput ? x + NODE_WIDTH : x;
     onStartConnect(node.name, portName, isOutput, { x: portX, y: portY });
-  }, [node.name, x, y, onStartConnect]);
+  }, [node.name, onStartConnect]);
 
   const handlePortMouseUp = useCallback((e: React.MouseEvent, portName: string, isOutput: boolean) => {
     e.stopPropagation();
@@ -120,14 +135,266 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
 
   const getPortColor = (type: string): string => {
     switch (type.toLowerCase()) {
-      case 'number': return '#4ade80';
-      case 'string': return '#f472b6';
-      case 'boolean': return '#facc15';
-      case 'object': return '#60a5fa';
-      case 'array': return '#a78bfa';
-      default: return '#94a3b8';
+    case 'number': return '#4ade80';
+    case 'string': return '#f472b6';
+    case 'boolean': return '#facc15';
+    case 'json':
+    case 'object': return '#60a5fa';
+    case 'array': return '#a78bfa';
+    default: return '#94a3b8';
     }
   };
+
+  // ── Rich function card rendering ──
+  // Uses same width as compact nodes; adds description + metadata rows below header
+  if (isRichNode) {
+    const width = RICH_NODE_WIDTH;
+    const description = definition?.description || '';
+    const secretsCount = getNodeProp(node, 'secretsCount') ?? 0;
+    const configsCount = getNodeProp(node, 'configsCount') ?? 0;
+    const scope = getNodeProp(node, 'scope') || definition?.context || 'platform';
+
+    // Layout: header + description + metadata + ports
+    const bodyTop = RICH_HEADER_HEIGHT;
+    const descTop = bodyTop + 4;
+    const metaTop = descTop + RICH_DESC_HEIGHT;
+    const portStartY = metaTop + RICH_META_HEIGHT + 2;
+    const portRows = Math.max(inputs.length, outputs.length, 1);
+    const totalHeight = portStartY + portRows * PORT_HEIGHT + 4;
+
+    return (
+      <g
+        transform={`translate(${x}, ${y})`}
+        onMouseDown={handleMouseDown}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
+        {/* Node name label above */}
+        <text
+          x={4}
+          y={-8}
+          style={{ fill: FBP.textFaint }}
+          fontSize={11}
+          fontFamily="system-ui, sans-serif"
+        >
+          {node.name}
+        </text>
+        {/* Execution glow */}
+        {execColors && (
+          <rect
+            x={-4} y={-4}
+            width={width + 8} height={totalHeight + 8}
+            rx={14} ry={14}
+            fill="none"
+            stroke={execColors.glow}
+            strokeWidth={6}
+            opacity={execInfo?.state === 'running' ? 0.8 : 0.5}
+          >
+            {execInfo?.state === 'running' && (
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
+            )}
+          </rect>
+        )}
+        {/* Shadow */}
+        <rect
+          x={3} y={3}
+          width={width} height={totalHeight}
+          rx={10} ry={10}
+          style={{ fill: FBP.shadow }}
+        />
+
+        {/* Card background */}
+        <rect
+          width={width} height={totalHeight}
+          rx={10} ry={10}
+          style={{ fill: FBP.surface }}
+        />
+
+        {/* Header background */}
+        <rect
+          width={width}
+          height={RICH_HEADER_HEIGHT}
+          rx={10} ry={10}
+          style={{ fill: FBP.surfaceRaised }}
+        />
+        <rect
+          y={RICH_HEADER_HEIGHT - 10}
+          width={width} height={10}
+          style={{ fill: FBP.surfaceRaised }}
+        />
+
+        {/* Highlight ring for selected output node */}
+        {isHighlighted && (
+          <rect
+            x={-4} y={-4}
+            width={width + 8} height={totalHeight + 8}
+            rx={14} ry={14}
+            fill="none"
+            stroke="#06b6d4"
+            strokeWidth={2}
+            strokeDasharray="6 3"
+            opacity={0.8}
+          />
+        )}
+
+        {/* Border */}
+        <rect
+          width={width} height={totalHeight}
+          rx={10} ry={10}
+          fill="none"
+          style={{ stroke: execColors ? execColors.stroke : isHighlighted ? '#06b6d4' : (isSelected || isPreview ? '#3b82f6' : FBP.border) }}
+          strokeWidth={execColors ? 2 : (isSelected || isPreview || isHighlighted ? 2 : 1)}
+          strokeDasharray={execInfo?.state === 'queued' ? '8 4' : undefined}
+        >
+          {execInfo?.state === 'queued' && (
+            <animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite" />
+          )}
+        </rect>
+
+        {/* Duration badge */}
+        {execInfo?.durationMs !== undefined && (
+          <g transform={`translate(${width - 8}, -6)`}>
+            <rect
+              x={-36} y={-8}
+              width={44} height={16}
+              rx={8}
+              fill={execColors?.stroke || '#71717a'}
+              opacity={0.9}
+            />
+            <text
+              x={-14}
+              y={1}
+              textAnchor="middle"
+              fill="#18181b"
+              fontSize={9}
+              fontWeight={700}
+              fontFamily="system-ui, sans-serif"
+            >
+              {execInfo.durationMs < 1000 ? `${execInfo.durationMs}ms` : `${(execInfo.durationMs / 1000).toFixed(1)}s`}
+            </text>
+          </g>
+        )}
+
+        {/* Header: icon + name (same layout as compact) */}
+        <g transform={`translate(14, ${RICH_HEADER_HEIGHT / 2})`}>
+          <g transform="translate(-2, -6)">
+            <NodeIconSvg icon={definition?.icon || 'circle'} size={12} />
+          </g>
+          <text
+            x={16}
+            dominantBaseline="middle"
+            style={{ fill: FBP.text }}
+            fontSize={13}
+            fontWeight={600}
+            fontFamily="system-ui, sans-serif"
+          >
+            {getShortName(node.type)}
+          </text>
+        </g>
+
+        {/* Description (single line, truncated) */}
+        {description && (
+          <text
+            x={14} y={descTop + 14}
+            style={{ fill: FBP.textFaint }}
+            fontSize={10}
+            fontFamily="system-ui, sans-serif"
+          >
+            {description.length > 38 ? description.slice(0, 35) + '…' : description}
+          </text>
+        )}
+
+        {/* Metadata row: scope badge + secrets + configs */}
+        <g transform={`translate(14, ${metaTop + 2})`}>
+          <rect x={0} y={0} width={scope.length * 5.5 + 10} height={14} rx={3} style={{ fill: FBP.surfaceRaised }} />
+          <text x={5} y={10} style={{ fill: FBP.textMuted }} fontSize={9} fontFamily="system-ui">{scope}</text>
+          {secretsCount > 0 && (
+            <>
+              <text x={scope.length * 5.5 + 16} y={10} style={{ fill: FBP.textFaint }} fontSize={9} fontFamily="system-ui">🔒{secretsCount}</text>
+            </>
+          )}
+          {configsCount > 0 && (
+            <text x={scope.length * 5.5 + (secretsCount > 0 ? 42 : 16)} y={10} style={{ fill: FBP.textFaint }} fontSize={9} fontFamily="system-ui">⚙{configsCount}</text>
+          )}
+        </g>
+
+        {/* Input ports (left) */}
+        {inputs.map((port, i) => {
+          const portY = portStartY + i * PORT_HEIGHT + PORT_HEIGHT / 2;
+          const isValidDrop = state.connecting.active && state.connecting.isOutput && state.connecting.sourceNode !== node.name;
+          const isHov = hoveredPort?.name === port.name && !hoveredPort?.isOutput;
+          const highlight = isValidDrop && isHov;
+          const isOptional = 'optional' in port && port.optional;
+          return (
+            <g key={`input-${port.name}`}>
+              <circle
+                cx={0} cy={portY}
+                r={PORT_RADIUS}
+                strokeWidth={2}
+                style={{
+                  cursor: 'crosshair',
+                  fill: highlight ? '#60a5fa' : isOptional ? FBP.surface : '#3b82f6',
+                  stroke: isOptional ? '#3b82f6' : FBP.surface,
+                }}
+                onMouseDown={(e) => handlePortMouseDown(e, port.name, false, y + portY, x)}
+                onMouseUp={(e) => handlePortMouseUp(e, port.name, false)}
+                onMouseEnter={() => setHoveredPort({ name: port.name, isOutput: false })}
+                onMouseLeave={() => setHoveredPort(null)}
+              />
+              <text
+                x={12} y={portY}
+                dominantBaseline="middle"
+                style={{ fill: isOptional ? FBP.textFaint : FBP.textMuted }}
+                fontSize={11}
+                fontFamily="system-ui, sans-serif"
+              >
+                {port.name}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Output ports (right) */}
+        {outputs.map((port, i) => {
+          const portY = portStartY + i * PORT_HEIGHT + PORT_HEIGHT / 2;
+          const isValidDrop = state.connecting.active && !state.connecting.isOutput && state.connecting.sourceNode !== node.name;
+          const isHov = hoveredPort?.name === port.name && hoveredPort?.isOutput;
+          const highlight = isValidDrop && isHov;
+          return (
+            <g key={`output-${port.name}`}>
+              <circle
+                cx={width} cy={portY}
+                r={PORT_RADIUS}
+                strokeWidth={2}
+                style={{
+                  cursor: 'crosshair',
+                  fill: highlight ? '#60a5fa' : '#22c55e',
+                  stroke: FBP.surface,
+                }}
+                onMouseDown={(e) => handlePortMouseDown(e, port.name, true, y + portY, x + width)}
+                onMouseUp={(e) => handlePortMouseUp(e, port.name, true)}
+                onMouseEnter={() => setHoveredPort({ name: port.name, isOutput: true })}
+                onMouseLeave={() => setHoveredPort(null)}
+              />
+              <text
+                x={width - 12} y={portY}
+                textAnchor="end"
+                dominantBaseline="middle"
+                style={{ fill: FBP.textMuted }}
+                fontSize={11}
+                fontFamily="system-ui, sans-serif"
+              >
+                {port.name}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  }
+
+  // ── Standard compact node rendering ──
+  const nodeHeight = NODE_HEADER_HEIGHT + Math.max(inputs.length, outputs.length, 1) * PORT_HEIGHT + 8;
+  const headerFill = isSubnet ? FBP.subnetHeader : FBP.surfaceRaised;
 
   return (
     <g
@@ -135,66 +402,146 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
       onMouseDown={handleMouseDown}
       style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
     >
+      {/* Node name label above */}
+      <text
+        x={4}
+        y={-8}
+        style={{ fill: FBP.textFaint }}
+        fontSize={11}
+        fontFamily="system-ui, sans-serif"
+      >
+        {node.name}
+      </text>
+      {/* Execution glow */}
+      {execColors && (
+        <rect
+          x={-4} y={-4}
+          width={NODE_WIDTH + 8} height={nodeHeight + 8}
+          rx={14} ry={14}
+          fill="none"
+          stroke={execColors.glow}
+          strokeWidth={6}
+          opacity={execInfo?.state === 'running' ? 0.8 : 0.5}
+        >
+          {execInfo?.state === 'running' && (
+            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
+          )}
+        </rect>
+      )}
+      {/* Shadow */}
+      <rect
+        x={3} y={3}
+        width={NODE_WIDTH}
+        height={nodeHeight}
+        rx={10}
+        ry={10}
+        style={{ fill: FBP.shadow }}
+      />
+
       {/* Background fill */}
       <rect
         width={NODE_WIDTH}
         height={nodeHeight}
-        rx={8}
-        ry={8}
-        fill="#1e293b"
+        rx={10}
+        ry={10}
+        style={{ fill: FBP.surface }}
       />
 
       {/* Header background */}
       <rect
         width={NODE_WIDTH}
         height={NODE_HEADER_HEIGHT}
-        rx={8}
-        ry={8}
-        fill={isSubnet ? '#7c3aed' : '#334155'}
+        rx={10}
+        ry={10}
+        style={{ fill: headerFill }}
       />
       <rect
-        y={NODE_HEADER_HEIGHT - 8}
+        y={NODE_HEADER_HEIGHT - 10}
         width={NODE_WIDTH}
-        height={8}
-        fill={isSubnet ? '#7c3aed' : '#334155'}
+        height={10}
+        style={{ fill: headerFill }}
       />
 
-      {/* Border on top of everything */}
+      {/* Highlight ring for selected output node */}
+      {isHighlighted && (
+        <rect
+          x={-4} y={-4}
+          width={NODE_WIDTH + 8} height={nodeHeight + 8}
+          rx={14} ry={14}
+          fill="none"
+          stroke="#06b6d4"
+          strokeWidth={2}
+          strokeDasharray="6 3"
+          opacity={0.8}
+        />
+      )}
+
+      {/* Border */}
       <rect
         width={NODE_WIDTH}
         height={nodeHeight}
-        rx={8}
-        ry={8}
+        rx={10}
+        ry={10}
         fill="none"
-        stroke={isSelected || isPreview ? '#3b82f6' : '#334155'}
-        strokeWidth={isSelected || isPreview ? 2 : 1}
-      />
-      
-      {definition?.icon && (
-        <g transform={`translate(10, ${NODE_HEADER_HEIGHT / 2 - 5.5})`}>
-          <NodeIconSvg icon={definition.icon} size={11} />
+        style={{ stroke: execColors ? execColors.stroke : isHighlighted ? '#06b6d4' : (isSelected || isPreview ? '#3b82f6' : FBP.border) }}
+        strokeWidth={execColors ? 2 : (isSelected || isPreview || isHighlighted ? 2 : 1)}
+        strokeDasharray={execInfo?.state === 'queued' ? '8 4' : undefined}
+      >
+        {execInfo?.state === 'queued' && (
+          <animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite" />
+        )}
+      </rect>
+
+      {/* Duration badge */}
+      {execInfo?.durationMs !== undefined && (
+        <g transform={`translate(${NODE_WIDTH - 8}, -6)`}>
+          <rect
+            x={-36} y={-8}
+            width={44} height={16}
+            rx={8}
+            fill={execColors?.stroke || '#71717a'}
+            opacity={0.9}
+          />
+          <text
+            x={-14}
+            y={1}
+            textAnchor="middle"
+            fill="#18181b"
+            fontSize={9}
+            fontWeight={700}
+            fontFamily="system-ui, sans-serif"
+          >
+            {execInfo.durationMs < 1000 ? `${execInfo.durationMs}ms` : `${(execInfo.durationMs / 1000).toFixed(1)}s`}
+          </text>
         </g>
       )}
-      <text
-        x={NODE_WIDTH / 2}
-        y={NODE_HEADER_HEIGHT / 2 + 1}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="white"
-        fontSize={12}
-        fontWeight={600}
-        fontFamily="system-ui, sans-serif"
-      >
-        {getShortName(node.type)}
-      </text>
-      
+
+      {/* Header: icon + title aligned together */}
+      <g transform={`translate(14, ${NODE_HEADER_HEIGHT / 2})`}>
+        {definition?.icon && (
+          <g transform="translate(-2, -6)">
+            <NodeIconSvg icon={definition.icon} size={12} />
+          </g>
+        )}
+        <text
+          x={definition?.icon ? 16 : 0}
+          dominantBaseline="middle"
+          style={{ fill: FBP.text }}
+          fontSize={13}
+          fontWeight={600}
+          fontFamily="system-ui, sans-serif"
+        >
+          {getShortName(node.type)}
+        </text>
+      </g>
+
       {isSubnet && (
         <text
-          x={NODE_WIDTH - 8}
-          y={NODE_HEADER_HEIGHT / 2 + 1}
+          x={NODE_WIDTH - 10}
+          y={NODE_HEADER_HEIGHT / 2}
           textAnchor="end"
           dominantBaseline="middle"
-          fill="rgba(255,255,255,0.6)"
+          style={{ fill: FBP.subnetHeaderLabel }}
           fontSize={10}
           fontFamily="system-ui, sans-serif"
         >
@@ -206,17 +553,21 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
         const isValidDropTarget = state.connecting.active && state.connecting.isOutput && state.connecting.sourceNode !== node.name;
         const isHovered = hoveredPort?.name === port.name && hoveredPort?.isOutput === false;
         const highlight = isValidDropTarget && isHovered;
+        const isOptional = 'optional' in port && port.optional;
+        const portColor = getPortColor(port.type);
         return (
           <g key={`input-${port.name}`} transform={`translate(0, ${NODE_HEADER_HEIGHT + i * PORT_HEIGHT})`}>
             <circle
               cx={0}
               cy={PORT_HEIGHT / 2}
               r={PORT_RADIUS}
-              fill={highlight ? '#60a5fa' : getPortColor(port.type)}
-              stroke={highlight ? '#3b82f6' : '#1e293b'}
               strokeWidth={2}
-              style={{ cursor: 'crosshair' }}
-              onMouseDown={(e) => handlePortMouseDown(e, port.name, false, i)}
+              style={{
+                cursor: 'crosshair',
+                fill: highlight ? '#60a5fa' : isOptional ? FBP.surface : portColor,
+                stroke: isOptional ? portColor : FBP.surface,
+              }}
+              onMouseDown={(e) => handlePortMouseDown(e, port.name, false, y + NODE_HEADER_HEIGHT + i * PORT_HEIGHT + PORT_HEIGHT / 2, x)}
               onMouseUp={(e) => handlePortMouseUp(e, port.name, false)}
               onMouseEnter={() => setHoveredPort({ name: port.name, isOutput: false })}
               onMouseLeave={() => setHoveredPort(null)}
@@ -225,7 +576,7 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
               x={12}
               y={PORT_HEIGHT / 2}
               dominantBaseline="middle"
-              fill="#94a3b8"
+              style={{ fill: isOptional ? FBP.textFaint : FBP.textMuted }}
               fontSize={11}
               fontFamily="system-ui, sans-serif"
             >
@@ -245,11 +596,13 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
               cx={NODE_WIDTH}
               cy={PORT_HEIGHT / 2}
               r={PORT_RADIUS}
-              fill={highlight ? '#60a5fa' : getPortColor(port.type)}
-              stroke={highlight ? '#3b82f6' : '#1e293b'}
               strokeWidth={2}
-              style={{ cursor: 'crosshair' }}
-              onMouseDown={(e) => handlePortMouseDown(e, port.name, true, i)}
+              style={{
+                cursor: 'crosshair',
+                fill: highlight ? '#60a5fa' : getPortColor(port.type),
+                stroke: FBP.surface,
+              }}
+              onMouseDown={(e) => handlePortMouseDown(e, port.name, true, y + NODE_HEADER_HEIGHT + i * PORT_HEIGHT + PORT_HEIGHT / 2, x + NODE_WIDTH)}
               onMouseUp={(e) => handlePortMouseUp(e, port.name, true)}
               onMouseEnter={() => setHoveredPort({ name: port.name, isOutput: true })}
               onMouseLeave={() => setHoveredPort(null)}
@@ -259,7 +612,7 @@ export function GraphNode({ node, onStartConnect, onEndConnect }: GraphNodeProps
               y={PORT_HEIGHT / 2}
               textAnchor="end"
               dominantBaseline="middle"
-              fill="#94a3b8"
+              style={{ fill: FBP.textMuted }}
               fontSize={11}
               fontFamily="system-ui, sans-serif"
             >
@@ -276,13 +629,13 @@ export function getNodePortPosition(
   node: Node,
   portName: string,
   isOutput: boolean,
-  definition?: { inputs?: Port[]; outputs?: Port[] }
+  definition?: { inputs?: Port[]; outputs?: Port[]; category?: string }
 ): { x: number; y: number } | null {
   const x = node.meta?.x || 0;
   const y = node.meta?.y || 0;
   
-  // For subnets, derive ports from boundary nodes inside (always in sync)
   const isSubnet = node.nodes && node.nodes.length > 0;
+  const isRich = definition?.category === 'functions';
   const ports = isSubnet
     ? deriveBoundaryPorts(node.nodes || [], isOutput ? 'output' : 'input')
     : isOutput
@@ -291,6 +644,14 @@ export function getNodePortPosition(
   
   const portIndex = ports.findIndex(p => p.name === portName);
   if (portIndex === -1) return null;
+
+  if (isRich) {
+    const portStartY = RICH_HEADER_HEIGHT + 4 + RICH_DESC_HEIGHT + RICH_META_HEIGHT + 2;
+    return {
+      x: isOutput ? x + RICH_NODE_WIDTH : x,
+      y: y + portStartY + portIndex * PORT_HEIGHT + PORT_HEIGHT / 2
+    };
+  }
   
   return {
     x: isOutput ? x + NODE_WIDTH : x,
@@ -298,4 +659,9 @@ export function getNodePortPosition(
   };
 }
 
-export { NODE_WIDTH, NODE_HEADER_HEIGHT, PORT_HEIGHT };
+export function getNodeWidth(node: Node, definition?: { category?: string }): number {
+  if (definition?.category === 'functions') return RICH_NODE_WIDTH;
+  return NODE_WIDTH;
+}
+
+export { NODE_HEADER_HEIGHT, NODE_WIDTH, PORT_HEIGHT, RICH_NODE_WIDTH };

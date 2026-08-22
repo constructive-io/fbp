@@ -1,13 +1,16 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { useGraph, useSelection, useNavigation, useScopedGraph, Point } from '../context/GraphContext';
-import { GraphNode } from './GraphNode';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+
+import { nextNodeName,Point, useGraph, useNavigation, useScopedGraph, useSelection } from '../context/GraphContext';
+import { BOUNDARY_NODE_KINDS } from '../types';
+import { clamp,screenToCanvas } from '../utils/geometry';
+import { FBP } from '../utils/theme';
+import { CommandPalette } from './CommandPalette';
 import { GraphEdge, TempEdge } from './GraphEdge';
-import { screenToCanvas, clamp } from '../utils/geometry';
+import { GraphNode } from './GraphNode';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2;
 const GRID_SIZE = 20;
-const BOUNDARY_NODE_TYPES = ['core/graph/input', 'core/graph/output', 'core/graph/prop'];
 
 export function GraphCanvas() {
   const { state, dispatch } = useGraph();
@@ -30,6 +33,11 @@ export function GraphCanvas() {
   const [connectingEnd, setConnectingEnd] = useState<Point | null>(null);
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const lastMousePos = useRef<Point | null>(null);
+
+  // Command palette state
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteScreenPos, setPaletteScreenPos] = useState<Point>({ x: 0, y: 0 });
+  const [paletteCanvasPos, setPaletteCanvasPos] = useState<Point>({ x: 0, y: 0 });
 
   // Use refs to access current state in native event handlers
   const viewRef = useRef(state.view);
@@ -206,64 +214,85 @@ export function GraphCanvas() {
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<SVGSVGElement>) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    // If palette is open, let it handle its own keys
+    if (paletteOpen) return;
     // Spacebar for pan mode
     if (e.code === 'Space' && !e.repeat) {
       e.preventDefault();
       setIsSpaceHeld(true);
       return;
     }
+    // Tab opens the command palette
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (rect) {
+        const mouse = lastMousePos.current;
+        const canvasPos = mouse || screenToCanvas(
+          { x: rect.width / 2, y: rect.height / 2 },
+          state.view.pan,
+          state.view.zoom
+        );
+        const screenX = canvasPos.x * state.view.zoom + state.view.pan.x;
+        const screenY = canvasPos.y * state.view.zoom + state.view.pan.y;
+        setPaletteScreenPos({ x: screenX, y: screenY });
+        setPaletteCanvasPos(canvasPos);
+        setPaletteOpen(true);
+      }
+      return;
+    }
 
     switch (e.key) {
-      case 'Delete':
-      case 'Backspace':
-        deleteSelection();
-        break;
-      case 'd':
-        if (e.metaKey || e.ctrlKey) {
-          e.preventDefault();
-          duplicateSelection();
-        }
-        break;
-      case 'a':
-        if (e.metaKey || e.ctrlKey) {
-          e.preventDefault();
-          selectAll();
-        }
-        break;
-      case 'Escape':
-        clearSelection();
-        if (state.connecting.active) {
-          dispatch({ type: 'CANCEL_CONNECTING' });
-          setConnectingEnd(null);
-        }
-        break;
+    case 'Delete':
+    case 'Backspace':
+      deleteSelection();
+      break;
+    case 'd':
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        duplicateSelection();
+      }
+      break;
+    case 'a':
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        selectAll();
+      }
+      break;
+    case 'Escape':
+      clearSelection();
+      if (state.connecting.active) {
+        dispatch({ type: 'CANCEL_CONNECTING' });
+        setConnectingEnd(null);
+      }
+      break;
       // U and Enter handled by global document listener (see useEffect below)
-      case 'c':
-      case 'C':
-        if (e.shiftKey && state.selection.nodeIds.size >= 1) {
-          e.preventDefault();
-          collapseSelection();
-        } else if ((e.metaKey || e.ctrlKey) && state.selection.nodeIds.size >= 1) {
-          e.preventDefault();
-          copySelection();
-        }
-        break;
-      case 'v':
-      case 'V':
-        if (e.metaKey || e.ctrlKey) {
-          e.preventDefault();
-          pasteSelection();
-        }
-        break;
-      case 'l':
-      case 'L':
-        if (state.selection.nodeIds.size >= 1) {
-          e.preventDefault();
-          layoutSelection();
-        }
-        break;
+    case 'c':
+    case 'C':
+      if (e.shiftKey && state.selection.nodeIds.size >= 1) {
+        e.preventDefault();
+        collapseSelection();
+      } else if ((e.metaKey || e.ctrlKey) && state.selection.nodeIds.size >= 1) {
+        e.preventDefault();
+        copySelection();
+      }
+      break;
+    case 'v':
+    case 'V':
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        pasteSelection();
+      }
+      break;
+    case 'l':
+    case 'L':
+      if (state.selection.nodeIds.size >= 1) {
+        e.preventDefault();
+        layoutSelection();
+      }
+      break;
     }
-  }, [deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, clearSelection, canGoUp, goUp, diveInto, collapseSelection, layoutSelection, state.selection.nodeIds, state.graph.nodes, state.connecting.active, dispatch]);
+  }, [deleteSelection, duplicateSelection, copySelection, pasteSelection, selectAll, clearSelection, canGoUp, goUp, diveInto, collapseSelection, layoutSelection, state.selection.nodeIds, state.graph.nodes, state.connecting.active, state.view, paletteOpen, dispatch]);
 
   const handleKeyUp = useCallback((e: React.KeyboardEvent<SVGSVGElement>) => {
     if (e.code === 'Space') {
@@ -295,13 +324,14 @@ export function GraphCanvas() {
       );
 
       if (isBoundary) {
-        const boundaryType = definitionName === 'graph/input' ? 'input' 
-          : definitionName === 'graph/output' ? 'output' 
-          : 'prop';
+        const boundaryType = definitionName === BOUNDARY_NODE_KINDS.input ? 'input' 
+          : definitionName === BOUNDARY_NODE_KINDS.output ? 'output' 
+            : 'prop';
         dispatch({ type: 'ADD_BOUNDARY_NODE', boundaryType, position });
       } else {
+        const existingNames = scopedNodesRef.current.map(n => n.name);
         const newNode = {
-          name: `${definitionName.split('/').pop()}_${Date.now().toString(36)}`,
+          name: nextNodeName(definitionName, existingNames),
           type: definitionName,
           meta: position
         };
@@ -378,78 +408,96 @@ export function GraphCanvas() {
 
   const connectingStartPos = getConnectingStartPos();
 
+  const closePalette = useCallback(() => {
+    setPaletteOpen(false);
+    svgRef.current?.focus();
+  }, []);
+
   return (
-    <svg
-      ref={svgRef}
-      tabIndex={0}
-      className="w-full h-full bg-slate-950 outline-none"
-      onKeyDown={handleKeyDown}
-      onKeyUp={handleKeyUp}
-      onMouseDownCapture={() => svgRef.current?.focus()}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      style={{ cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default', userSelect: 'none', touchAction: 'none' }}
-    >
-      <defs>
-        <pattern
-          id="grid"
-          width={GRID_SIZE}
-          height={GRID_SIZE}
-          patternUnits="userSpaceOnUse"
-          patternTransform={`translate(${state.view.pan.x % (GRID_SIZE * state.view.zoom)}, ${state.view.pan.y % (GRID_SIZE * state.view.zoom)}) scale(${state.view.zoom})`}
-        >
-          <circle cx={GRID_SIZE / 2} cy={GRID_SIZE / 2} r={1} fill="#334155" />
-        </pattern>
-      </defs>
-      
-      <rect ref={bgRef} width="100%" height="100%" fill="url(#grid)" />
+    <div className="relative w-full h-full">
+      <svg
+        ref={svgRef}
+        tabIndex={0}
+        className="w-full h-full bg-zinc-950 outline-none"
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onMouseDownCapture={() => {
+          svgRef.current?.focus();
+          if (paletteOpen) closePalette();
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        style={{ cursor: isPanning ? 'grabbing' : isSpaceHeld ? 'grab' : 'default', userSelect: 'none', touchAction: 'none' }}
+      >
+        <defs>
+          <pattern
+            id="grid"
+            width={GRID_SIZE}
+            height={GRID_SIZE}
+            patternUnits="userSpaceOnUse"
+            patternTransform={`translate(${state.view.pan.x % (GRID_SIZE * state.view.zoom)}, ${state.view.pan.y % (GRID_SIZE * state.view.zoom)}) scale(${state.view.zoom})`}
+          >
+            <circle cx={GRID_SIZE / 2} cy={GRID_SIZE / 2} r={1} style={{ fill: FBP.gridDot }} />
+          </pattern>
+        </defs>
+        
+        <rect ref={bgRef} width="100%" height="100%" fill="url(#grid)" />
 
-      <g transform={`translate(${state.view.pan.x}, ${state.view.pan.y}) scale(${state.view.zoom})`}>
-        {scopedEdges.map((edge, i) => (
-          <GraphEdge key={`${edge.src.node}:${edge.src.port}->${edge.dst.node}:${edge.dst.port}`} edge={edge} />
-        ))}
+        <g transform={`translate(${state.view.pan.x}, ${state.view.pan.y}) scale(${state.view.zoom})`}>
+          {scopedEdges.map((edge, i) => (
+            <GraphEdge key={`${edge.src.node}:${edge.src.port}->${edge.dst.node}:${edge.dst.port}`} edge={edge} />
+          ))}
 
-        {connectingStartPos && connectingEnd && (
-          <TempEdge start={connectingStartPos} end={connectingEnd} />
-        )}
+          {connectingStartPos && connectingEnd && (
+            <TempEdge start={connectingStartPos} end={connectingEnd} />
+          )}
 
-        {scopedNodes.map(node => (
-          <GraphNode
-            key={node.name}
-            node={node}
-            onStartConnect={handleStartConnect}
-            onEndConnect={handleEndConnect}
-          />
-        ))}
+          {scopedNodes.map(node => (
+            <GraphNode
+              key={node.name}
+              node={node}
+              onStartConnect={handleStartConnect}
+              onEndConnect={handleEndConnect}
+            />
+          ))}
 
-        {state.boxSelect.active && state.boxSelect.start && state.boxSelect.end && (
-          <rect
-            x={Math.min(state.boxSelect.start.x, state.boxSelect.end.x)}
-            y={Math.min(state.boxSelect.start.y, state.boxSelect.end.y)}
-            width={Math.abs(state.boxSelect.end.x - state.boxSelect.start.x)}
-            height={Math.abs(state.boxSelect.end.y - state.boxSelect.start.y)}
-            fill="rgba(59, 130, 246, 0.1)"
-            stroke="#3b82f6"
-            strokeWidth={1}
-            strokeDasharray="4 2"
-          />
-        )}
-      </g>
-
-      {state.cwd !== '/' && (
-        <g>
-          <rect x={10} y={10} width={200} height={30} rx={4} fill="rgba(30, 41, 59, 0.9)" />
-          <text x={20} y={30} fill="#94a3b8" fontSize={12} fontFamily="system-ui, sans-serif">
-            {state.cwd}
-          </text>
-          <text x={180} y={30} fill="#64748b" fontSize={10} fontFamily="system-ui, sans-serif">
-            U to go up
-          </text>
+          {state.boxSelect.active && state.boxSelect.start && state.boxSelect.end && (
+            <rect
+              x={Math.min(state.boxSelect.start.x, state.boxSelect.end.x)}
+              y={Math.min(state.boxSelect.start.y, state.boxSelect.end.y)}
+              width={Math.abs(state.boxSelect.end.x - state.boxSelect.start.x)}
+              height={Math.abs(state.boxSelect.end.y - state.boxSelect.start.y)}
+              fill="rgba(59, 130, 246, 0.1)"
+              stroke="#3b82f6"
+              strokeWidth={1}
+              strokeDasharray="4 2"
+            />
+          )}
         </g>
+
+        {state.cwd !== '/' && (
+          <g>
+            <rect x={10} y={10} width={200} height={30} rx={4} style={{ fill: FBP.surfaceRaised }} opacity={0.92} />
+            <text x={20} y={30} style={{ fill: FBP.textMuted }} fontSize={12} fontFamily="system-ui, sans-serif">
+              {state.cwd}
+            </text>
+            <text x={180} y={30} style={{ fill: FBP.textFaint }} fontSize={10} fontFamily="system-ui, sans-serif">
+              U to go up
+            </text>
+          </g>
+        )}
+      </svg>
+
+      {paletteOpen && (
+        <CommandPalette
+          position={paletteScreenPos}
+          canvasPosition={paletteCanvasPos}
+          onClose={closePalette}
+        />
       )}
-    </svg>
+    </div>
   );
 }

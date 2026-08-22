@@ -49,8 +49,25 @@ export const multiplyDef: NodeDefinitionWithImpl = {
   })
 };
 
+export const subtractDef: NodeDefinitionWithImpl = {
+  context: 'js',
+  name: 'subtract',
+  category: 'math',
+  icon: 'minus',
+  inputs: [
+    { name: 'a', type: 'number' },
+    { name: 'b', type: 'number' }
+  ],
+  outputs: [{ name: 'difference', type: 'number' }],
+  description: 'Subtracts b from a',
+  impl: (inputs) => ({
+    difference: (inputs.a ?? 0) - (inputs.b ?? 0)
+  })
+};
+
 export const mathDefinitions: NodeDefinitionWithImpl[] = [
   constNumberDef,
   addDef,
-  multiplyDef
+  multiplyDef,
+  subtractDef
 ];
