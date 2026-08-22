@@ -17,7 +17,7 @@
  * - The port/prop name is stored as a property: { name: 'portName', value: 'a' } or { name: 'propName', value: 'scale' }
  */
 
-import type { Graph, Node, Edge, NodeDefinition, Port, PropDefinition } from '@fbp/types';
+import type { Edge, Graph, Node, NodeDefinition } from '@fbp/types';
 
 // =============================================================================
 // GRAPH DATA (shared, single source of truth)

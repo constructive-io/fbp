@@ -96,7 +96,7 @@ export const graphqlRequestDef: NodeDefinitionWithImpl = {
         };
       }
 
-      const json = await response.json();
+      const json = await response.json() as Record<string, any>;
 
       if (json.errors && json.errors.length > 0) {
         return {

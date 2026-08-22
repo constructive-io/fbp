@@ -1,7 +1,8 @@
 import type { Graph } from '@fbp/types';
+
+import { mathDefinitions } from '../__fixtures__/math-definitions';
+import {uiDefinitions } from '../__fixtures__/ui-definitions';
 import { evaluate } from '../src/evaluate';
-import { mathDefinitions, constNumberDef, addDef, multiplyDef } from '../__fixtures__/math-definitions';
-import { uiDefinitions, pageDef, formDef, inputDef, buttonDef, textDef } from '../__fixtures__/ui-definitions';
 
 describe('evaluate', () => {
   describe('math operations', () => {

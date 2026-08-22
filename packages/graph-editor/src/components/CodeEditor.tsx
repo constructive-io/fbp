@@ -1,6 +1,6 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { Highlight, themes } from 'prism-react-renderer';
 import { clsx } from 'clsx';
+import { Highlight, themes } from 'prism-react-renderer';
+import React, { useCallback, useEffect,useRef, useState } from 'react';
 
 interface CodeEditorProps {
   value: string;
@@ -58,8 +58,8 @@ export function CodeEditor({
   return (
     <div 
       className={clsx(
-        'relative rounded bg-slate-800 border overflow-hidden',
-        isFocused ? 'border-blue-500' : 'border-slate-600',
+        'relative rounded bg-zinc-900 border overflow-hidden',
+        isFocused ? 'border-blue-500' : 'border-zinc-700',
         className
       )}
     >

@@ -9,16 +9,16 @@ import type { NodeDefinitionWithImpl } from '../src/types';
 function coerceValue(value: any, valueType: string): any {
   if (value === undefined || value === null) return value;
   switch (valueType) {
-    case 'number':
-      return typeof value === 'number' ? value : parseFloat(String(value)) || 0;
-    case 'string':
-      return String(value);
-    case 'boolean':
-      return value === true || value === 'true' || value === 1;
-    case 'Element':
-    case 'any':
-    default:
-      return value;
+  case 'number':
+    return typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+  case 'string':
+    return String(value);
+  case 'boolean':
+    return value === true || value === 'true' || value === 1;
+  case 'Element':
+  case 'any':
+  default:
+    return value;
   }
 }
 

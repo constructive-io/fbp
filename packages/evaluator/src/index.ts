@@ -1,8 +1,10 @@
 export { evaluate } from './evaluate';
-export type { NodeImplFn, NodeDefinitionWithImpl, EvaluateOptions } from './types';
+export type { EvaluateOptions, NodeDefinitionWithImpl, NodeImplFn, PropDefinitionWithOptions } from './types';
+export type { GraphValidationError, GraphValidationErrorCode, ValidateGraphOptions } from './validate';
+export { validateGraph } from './validate';
 
 // Re-export node definitions for convenience
-export { mathDefinitions, constNumberDef, addDef, multiplyDef } from './definitions/math';
-export { uiDefinitions, pageDef, formDef, inputDef, buttonDef, textDef, graphInputDef, graphOutputDef, graphPropDef } from './definitions/ui';
-export { coreDefinitions, jsonSelectDef, jsonObjectDef, flowGuardDef, stringTemplateDef, stringConcatDef } from './definitions/core';
-export { netDefinitions, graphqlRequestDef } from './definitions/net';
+export { constBooleanDef, constStringDef, coreDefinitions, flowBranchDef, flowCoerceDef, flowFilterDef, flowForEachDef, flowGuardDef, flowMergeDef, flowSwitchDef, jsonMergeDef, jsonObjectDef, jsonSelectDef, jsonSplitDef, stringConcatDef,stringTemplateDef } from './definitions/core';
+export { addDef, constNumberDef, mathDefinitions, multiplyDef, subtractDef } from './definitions/math';
+export { graphqlRequestDef,netDefinitions } from './definitions/net';
+export { buttonDef, formDef, graphInputDef, graphOutputDef, graphPropDef,inputDef, pageDef, textDef, uiDefinitions } from './definitions/ui';

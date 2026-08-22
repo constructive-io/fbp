@@ -7,17 +7,38 @@
 Flow-Based Programming TypeScript utilities for the Interweb
 
 <p align="center" width="100%">
-  <a href="https://github.com/flow-based-programming/spec/actions/workflows/run-tests.yaml">
-    <img height="20" src="https://github.com/flow-based-programming/spec/actions/workflows/run-tests.yaml/badge.svg" />
+  <a href="https://github.com/constructive-io/fbp/actions/workflows/run-tests.yaml">
+    <img height="20" src="https://github.com/constructive-io/fbp/actions/workflows/run-tests.yaml/badge.svg" />
   </a>
 </p>
 
 ## Packages
 
-This repository contains the following packages:
+The format, the engine that runs it, and the editor that draws it:
 
-- [`@fbp/types`](https://github.com/flow-based-programming/spec/tree/main/packages/types)  
-  Flow-Based Programming TypeScript Types & Definitions
+- [`@fbp/types`](./packages/types)  
+  Graph types and definitions — the JSON a flow *is*
+- [`@fbp/spec`](./packages/spec)  
+  Specification language and renderer for graph definitions
+- [`@fbp/evaluator`](./packages/evaluator)  
+  Lazy graph evaluator — pulls a node's inputs only when its output is demanded
+- [`@fbp/graph-editor`](./packages/graph-editor)  
+  React graph editor — canvas, node palette, execution state
+- [`@fbp/examples`](./packages/examples)  
+  Example graphs, each asserted to evaluate to its documented output
+
+The runtime a host embeds: a registry of inline node adapters, addressed by
+task identifier (`math:add`, `json:parse`), plus the adapters themselves.
+
+- [`@fbp/core`](./packages/core)  
+  Inline node registry and the adapter/implementation contracts
+- [`@fbp/graph`](./packages/graph)  
+  Graph-execution payload shapes, guards, and inline argument preparation
+- [`@fbp/nodes`](./packages/nodes)  
+  The default adapter set — one registry with every adapter below registered
+- [`@fbp/const`](./packages/const) · [`@fbp/ctx`](./packages/ctx) · [`@fbp/flow`](./packages/flow) · [`@fbp/json`](./packages/json) · [`@fbp/math`](./packages/math) · [`@fbp/string`](./packages/string) · [`@fbp/text`](./packages/text) · [`@fbp/deploy`](./packages/deploy)  
+  Adapters: literals, invocation context, control flow, JSON, arithmetic,
+  strings, chunk/join, and deployment planning
 
 ## Credits
 

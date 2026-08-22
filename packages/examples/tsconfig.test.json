@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "paths": {
+      "@fbp/types": ["../types/src/index.ts"],
+      "@fbp/evaluator": ["../evaluator/src/index.ts"]
+    }
+  },
+  "include": ["src", "__tests__"]
+}

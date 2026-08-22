@@ -10,13 +10,12 @@
  */
 
 import type {
-  Node,
-  Graph,
   Edge,
+  Graph,
+  Node,
+  NodeDefinition,
   PortDef,
   PropDef,
-  NodeDefinition,
-  NodeMeta,
 } from './types';
 
 // =============================================================================
@@ -197,13 +196,13 @@ export interface MultiTabEditorState {
 // =============================================================================
 
 export type {
-  Node,
-  Graph,
   Edge,
-  PortRef,
-  PortDef,
-  PropDef,
-  PropValue,
+  Graph,
+  Node,
   NodeDefinition,
   NodeMeta,
+  PortDef,
+  PortRef,
+  PropDef,
+  PropValue,
 } from './types';

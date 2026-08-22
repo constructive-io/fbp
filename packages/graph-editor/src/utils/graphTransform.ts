@@ -18,8 +18,9 @@
  * - Backward compatibility with legacy graphs
  */
 
-import type { Graph, Node, Edge, Port, PropDefinition } from '@fbp/types';
-import { BOUNDARY_NODE_KINDS, getPortNameFromBoundary, getBoundaryType, getDataTypeFromBoundary, getDefaultFromBoundary } from '../types';
+import type { Edge, Graph, Node, Port, PropDefinition } from '@fbp/types';
+
+import { BOUNDARY_NODE_KINDS, getDataTypeFromBoundary, getDefaultFromBoundary,getPortNameFromBoundary } from '../types';
 
 // =============================================================================
 // DERIVE PORTS FROM BOUNDARY NODES

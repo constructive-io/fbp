@@ -1,42 +1,20 @@
 {
   "name": "@fbp/graph-editor",
-  "version": "1.1.0",
-  "author": "Dan Lynch <pyramation@gmail.com>",
-  "description": "Houdini-inspired graph editor for Flow-Based Programming",
+  "version": "1.2.0",
+  "description": "FBP visual graph editor — execution state visualization and rich function cards",
+  "author": "Constructive <developers@constructive.io>",
+  "license": "MIT",
   "main": "index.js",
   "module": "esm/index.js",
   "types": "index.d.ts",
-  "homepage": "https://github.com/flow-based-programming/spec",
-  "license": "MIT",
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/flow-based-programming/spec"
-  },
-  "bugs": {
-    "url": "https://github.com/flow-based-programming/spec/issues"
-  },
   "scripts": {
-    "clean": "makage clean",
-    "prepack": "npm run build",
     "build": "makage build",
     "build:dev": "makage build --dev",
-    "lint": "eslint . --fix",
-    "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch"
-  },
-  "keywords": [
-    "fbp",
-    "graph-editor",
-    "flow-based-programming",
-    "houdini"
-  ],
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "clean": "makage clean"
   },
   "dependencies": {
     "@fbp/types": "workspace:*",
@@ -49,12 +27,22 @@
     "prism-react-renderer": "^2.4.1",
     "react-icons": "^4.12.0"
   },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
   "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "makage": "0.1.9",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "tailwindcss": "^3.4.0"
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "makage": "^0.1.12",
+    "typescript": "^5.7.0"
+  },
+  "homepage": "https://github.com/constructive-io/fbp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/constructive-io/fbp"
+  },
+  "bugs": {
+    "url": "https://github.com/constructive-io/fbp/issues"
   }
 }

@@ -1,5 +1,6 @@
-import type { Graph, Node, Edge, Port } from '@fbp/types';
-import type { NodeDefinitionWithImpl, EvaluateOptions } from './types';
+import type { Edge, Graph, Node } from '@fbp/types';
+
+import type { EvaluateOptions,NodeDefinitionWithImpl } from './types';
 
 /**
  * Build a definition map key from context, category, and name.
@@ -9,13 +10,16 @@ function defKey(context: string, category: string, name: string): string {
 }
 
 /**
- * Parse a task_identifier (e.g. 'math:add') into [category, name].
- * Boundary nodes (no colon) return ['core', type].
+ * Parse a node type (e.g., 'math:add' or 'const/string') into [category, name].
+ * Colon is the canonical separator (category:name); slash is checked as fallback
+ * for legacy graph files. Boundary nodes (no separator) default to ['core', type].
  */
 function parseTaskIdentifier(type: string): [string, string] {
-  const idx = type.indexOf(':');
-  if (idx === -1) return ['core', type];
-  return [type.slice(0, idx), type.slice(idx + 1)];
+  const colonIdx = type.indexOf(':');
+  if (colonIdx !== -1) return [type.slice(0, colonIdx), type.slice(colonIdx + 1)];
+  const slashIdx = type.indexOf('/');
+  if (slashIdx !== -1) return [type.slice(0, slashIdx), type.slice(slashIdx + 1)];
+  return ['core', type];
 }
 
 /**
@@ -189,22 +193,66 @@ export async function evaluate(graph: Graph, options: EvaluateOptions): Promise<
     const nodeInputs: Record<string, any> = {};
     const portEdges = edgesByDst.get(nodeName);
 
+    /**
+     * A branch emits only the port it took, so an edge out of the arm it did not
+     * take is an edge whose source port is *absent* — not one carrying
+     * `undefined`, which a node may legitimately produce. A node fed by such an
+     * edge on a required input is not runnable, and the preview says so the way
+     * the runtime does: the node produces no outputs at all, which leaves the
+     * arm dark for everything downstream of it and lets a `flow:merge` further
+     * on run on whichever arm did arrive. Optional inputs absorb the absence
+     * instead, which is what makes reconvergence expressible.
+     */
+    const notTaken = (outputs: Record<string, any>, port: string) => !(port in outputs);
+    const skipped: Record<string, any> = {};
+
+    const declaredPortNames = new Set<string>();
     if (definition.inputs) {
       for (const inputPort of definition.inputs) {
+        declaredPortNames.add(inputPort.name);
         const edges = portEdges?.get(inputPort.name) ?? [];
         
         if (inputPort.multi) {
-          const values = await Promise.all(edges.map(async edge => {
+          const arrived = await Promise.all(edges.map(async edge => {
             const upstreamOutputs = await evaluateNode(edge.src.node);
-            return upstreamOutputs[edge.src.port];
+            return notTaken(upstreamOutputs, edge.src.port)
+              ? undefined
+              : { value: upstreamOutputs[edge.src.port] };
           }));
-          nodeInputs[inputPort.name] = values;
+          const values = arrived.filter((slot): slot is { value: any } => slot !== undefined);
+          if (edges.length > 0 && values.length === 0 && !inputPort.optional) {
+            cache.set(nodeName, skipped);
+            return skipped;
+          }
+          nodeInputs[inputPort.name] = values.map((slot) => slot.value);
         } else {
           if (edges.length > 0) {
             const edge = edges[0];
             const upstreamOutputs = await evaluateNode(edge.src.node);
-            nodeInputs[inputPort.name] = upstreamOutputs[edge.src.port];
+            if (notTaken(upstreamOutputs, edge.src.port)) {
+              if (!inputPort.optional) {
+                cache.set(nodeName, skipped);
+                return skipped;
+              }
+            } else {
+              nodeInputs[inputPort.name] = upstreamOutputs[edge.src.port];
+            }
           }
+        }
+      }
+    }
+
+    // Dynamic inputs: collect any edges targeting ports not declared in definition.inputs
+    if (portEdges) {
+      for (const [portName, edges] of portEdges) {
+        if (!declaredPortNames.has(portName) && edges.length > 0) {
+          const edge = edges[0];
+          const upstreamOutputs = await evaluateNode(edge.src.node);
+          if (notTaken(upstreamOutputs, edge.src.port)) {
+            cache.set(nodeName, skipped);
+            return skipped;
+          }
+          nodeInputs[portName] = upstreamOutputs[edge.src.port];
         }
       }
     }
