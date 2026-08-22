@@ -1,6 +1,6 @@
 {
   "name": "@fbp/deploy",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Inline deployment node adapter (manifest:parse, image:ref, deploy:plan) for the constructive-db compute worker",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

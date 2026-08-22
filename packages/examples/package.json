@@ -1,6 +1,6 @@
 {
   "name": "@fbp/examples",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Example FBP flow graphs — the catalog the Flows panel offers and the suites execute",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

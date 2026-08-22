@@ -1,6 +1,6 @@
 {
   "name": "@fbp/evaluator",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "FBP graph evaluator — node definitions, graph evaluation and validation",
   "author": "Constructive <developers@constructive.io>",
   "license": "MIT",

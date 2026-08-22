@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/constructive-io/fbp/compare/@fbp/evaluator@1.4.0...@fbp/evaluator@1.5.0) (2026-08-22)
+
+### Bug Fixes
+
+- rebuild dist before packing so published manifests resolve workspace deps ([818cb40](https://github.com/constructive-io/fbp/commit/818cb409995fb2cea77025294f07011650ba5dbd))
+
 # [1.4.0](https://github.com/constructive-io/fbp/compare/@fbp/evaluator@1.3.0...@fbp/evaluator@1.4.0) (2026-08-22)
 
 **Note:** Version bump only for package @fbp/evaluator
